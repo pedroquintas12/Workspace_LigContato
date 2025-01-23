@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="icon" href="https://resources-lig.s3.amazonaws.com/images/logo-thumbnail-whatsapp.png">
+    <link rel="stylesheet" href="/static/js/css/dashboard.css">
+</head>
+<body class="bg-light">
+    <!-- Cabeçalho -->
+    <div class="top-header">     
+        <button id="toggle-btn" class="toggle-btn">
+            <i class="material-icons">menu</i>
+        </button>
+        <div class="menu-title">
+            Work
+            <span class="user-info">
+                {% if username %}
+                    | Bem-vindo, <b>{{ username }}</b>
+                {% else %}
+                    | Bem-vindo, visitante
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- Barra lateral -->
+    <div id="sidebar" class="sidebar collapsed">
+        <div class="sidebar-content">
+            <div class="menu-item">
+                <a href="/relatorio" title="Relatório">
+                    <i class="material-icons">report</i>
+                    <span class="menu-text">Relatório Geral</span>
+                </a>
+            </div>
+            <div class="menu-item">
+                <a href="/relatorio_especifico" title="Relatório Específico">
+                    <i class="material-icons">assessment</i>
+                    <span class="menu-text">Relatório Específico</span>
+                </a>
+            </div>
+            <div class="menu-item">
+                <a href="/send_pending" title="Enviar Pendentes">
+                    <i class="material-icons">send</i>
+                    <span class="menu-text">Enviar Pendentes</span>
+                </a>              
+            </div> 
+            <div class="menu-item">
+                <a href="/search_process" title="Pesquisar Processo">
+                    <i class="material-icons">search</i>
+                    <span class="menu-text">Pesquisar Processo</span>
+                </a>
+            </div>  
+
+            <!-- Divisor -->
+            <div class="divider"></div>
+
+            <!-- Botão de Logout -->
+            <div class="menu-item logout">
+                <a href="#" id="logout-btn">
+                    <i class="material-icons">exit_to_app</i>
+                    <span class="menu-text">Sair</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+            <!-- Spinner de Carregamento -->
+            <div id="spinner" class="spinner-container">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+        </header>
+    </div>
+    
+    </header>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/static/js/dashborad.js"></script>
+    <script>
+
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggle-btn");
+        const container = document.getElementById("Conteniner-Primario");
+
+        $(document).ready(function() {
+        $("#toggle-btn").click(function() {
+            $("#sidebar").toggleClass("collapsed");
+            $("#Container-Primario").toggleClass("shifted");
+        });
+    });
+
+
+    </script>
+</body>
+</html>

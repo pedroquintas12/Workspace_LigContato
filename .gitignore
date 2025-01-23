@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+#ignore
+db_connection.py
+config.env
+
 # Distribution / packaging
 .Python
 build/
