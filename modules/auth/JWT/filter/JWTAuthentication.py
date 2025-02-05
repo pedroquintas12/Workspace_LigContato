@@ -1,20 +1,31 @@
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
+from collections.abc import Mapping
+from config import config
 
 
+# Classe para representar um usuário
+class User:
+    def __init__(self, username: str, password: str, role: str):
+        self.username = username
+        self.password = password
+        self.role = role
+
+# Classe para gerenciar a autenticação JWT
 class JWTUtil:
-    def __init__(self, secret: str):
-        self.secret = secret
+    def __init__(self):
+        self.secret = config.SECRET_TOKEN
         self.expiration = 24 * 60 * 60  # 24 horas em segundos
 
-    def generate_token(self, username: str, origem: str) -> str:
+    def generate_token(self, username: str, origem: str, role: str) -> str:
         try:
             expiration_date = datetime.utcnow() + timedelta(seconds=self.expiration)
 
             payload = {
                 "sub": username,
                 "iss": origem,
+                "role": role,
                 "exp": expiration_date
             }
 
@@ -46,6 +57,10 @@ class JWTUtil:
         claims = self.get_claims(token)
         return claims.get("iss") if claims else None
 
+    def get_role(self, token: str) -> Optional[str]:
+        claims = self.get_claims(token)
+        return claims.get("role") if claims else None
+
     def get_claims(self, token: str) -> Optional[dict]:
         try:
             claims = jwt.decode(token, self.secret, algorithms=["HS512"])
@@ -55,3 +70,4 @@ class JWTUtil:
         except jwt.InvalidTokenError:
             print("Invalid token.")
         return None
+

@@ -22,7 +22,7 @@ class ConsultaBanco:
             db_cursor.execute(query, (username,))
             result =db_cursor.fetchone()
             if result:
-                return True
+                return result
             
         except mysql.connector.Error as err:
             logger.error(f"Erro ao buscar usuario: {err}")
@@ -73,19 +73,19 @@ class ConsultaBanco:
 class InserirBanco:
 
     @staticmethod
-    def NovoUsuario(username,password,origin,data):
+    def NovoUsuario(username,password,origin,role,data):
         try:
             db_connection = get_db_connection()
             db_cursor = db_connection.cursor()
-            query = """ INSERT INTO auth (username,password,origin,created_date,modified_date)
-                        VALUES(%s,%s,%s,%s,%s)"""
-            db_cursor.execute(query,(username,password,origin,data,data))
+            query = """ INSERT INTO auth (username,password,role,origin,created_date,modified_date)
+                        VALUES(%s,%s,%s,%s,%s,%s)"""
+            db_cursor.execute(query,(username,password,role,origin,data,data))
             db_connection.commit()
             return {"status": "success", "message": "Usuário inserido com sucesso"}, 200  # Retorna um dicionário e o código 200
         except mysql.connector.Error as err:
             logger.error(f"Erro ao inserir usuario: {err}")
             return {"status": "error", "message": str(err)}, 500  # Retorna um dicionário de erro e o código 500
         except Exception as e:
-            logger.error(f"Erro inesperado ao inserir usuario: {err}")
-            return {"status": "error", "message": str(err)}, 500  # Retorna um dicionário de erro e o código 500
+            logger.error(f"Erro inesperado ao inserir usuario: {e}")
+            return {"status": "error", "message": str(e)}, 500  # Retorna um dicionário de erro e o código 500
 
