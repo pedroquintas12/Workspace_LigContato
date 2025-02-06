@@ -71,3 +71,32 @@ class JWTUtil:
             print("Invalid token.")
         return None
 
+from functools import wraps
+from flask import request, jsonify
+from modules.auth.JWT.filter.JWTAuthentication import JWTUtil
+
+# Middleware para validar o token JWT
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+
+        # Verifica se o token está presente no cabeçalho Authorization
+        if "Authorization" in request.headers:
+            auth_header = request.headers["Authorization"]
+            if auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+
+        if not token:
+            return jsonify({"message": "Token não fornecido."}), 401
+
+        try:
+            jwt_util = JWTUtil()
+            if not jwt_util.token_valido(token):
+                return jsonify({"message": "Token inválido ou expirado."}), 401
+        except Exception as e:
+            return jsonify({"message": f"Erro ao validar token: {str(e)}"}), 401
+
+        return f(*args, **kwargs)
+
+    return decorated

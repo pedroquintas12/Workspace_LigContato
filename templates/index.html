@@ -1,102 +1,145 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <link rel="icon" href="https://resources-lig.s3.amazonaws.com/images/logo-thumbnail-whatsapp.png">
-    <link rel="stylesheet" href="/static/js/css/dashboard.css">
-</head>
-<body class="bg-light">
-    <!-- Cabeçalho -->
-    <div class="top-header">     
-        <button id="toggle-btn" class="toggle-btn">
-            <i class="material-icons">menu</i>
-        </button>
-        <div class="menu-title">
-            Work
-            <span class="user-info">
-                {% if username %}
-                    | Bem-vindo, <b>{{ username }}</b>
-                {% else %}
-                    | Bem-vindo, visitante
-                {% endif %}
-            </span>
-        </div>
-    </div>
-
-    <!-- Barra lateral -->
-    <div id="sidebar" class="sidebar collapsed">
-        <div class="sidebar-content">
-            <div class="menu-item">
-                <a href="/relatorio" title="Relatório">
-                    <i class="material-icons">report</i>
-                    <span class="menu-text">Relatório Geral</span>
-                </a>
-            </div>
-            <div class="menu-item">
-                <a href="/relatorio_especifico" title="Relatório Específico">
-                    <i class="material-icons">assessment</i>
-                    <span class="menu-text">Relatório Específico</span>
-                </a>
-            </div>
-            <div class="menu-item">
-                <a href="/send_pending" title="Enviar Pendentes">
-                    <i class="material-icons">send</i>
-                    <span class="menu-text">Enviar Pendentes</span>
-                </a>              
-            </div> 
-            <div class="menu-item">
-                <a href="/search_process" title="Pesquisar Processo">
-                    <i class="material-icons">search</i>
-                    <span class="menu-text">Pesquisar Processo</span>
-                </a>
-            </div>  
-
-            <!-- Divisor -->
-            <div class="divider"></div>
-
-            <!-- Botão de Logout -->
-            <div class="menu-item logout">
-                <a href="#" id="logout-btn">
-                    <i class="material-icons">exit_to_app</i>
-                    <span class="menu-text">Sair</span>
-                </a>
-            </div>
-        </div>
-    </div>
-    
-            <!-- Spinner de Carregamento -->
-            <div id="spinner" class="spinner-container">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Carregando...</span>
-                </div>
-            </div>
-        </header>
-    </div>
-    
-    </header>
-    
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="/static/js/dashborad.js"></script>
+    <title>Stream Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .disabled {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+    </style>
     <script>
+        let userRole = ""; // Será definido pelo backend ao carregar a página.
 
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("toggle-btn");
-        const container = document.getElementById("Conteniner-Primario");
+        document.addEventListener("DOMContentLoaded", function () {
+            const tableBody = document.getElementById("stream-table-body");
+            const closeShiftButton = document.getElementById("close-shift-btn");
 
-        $(document).ready(function() {
-        $("#toggle-btn").click(function() {
-            $("#sidebar").toggleClass("collapsed");
-            $("#Container-Primario").toggleClass("shifted");
+            // Função para converter a data de dd/MM/yyyy HH:mm:ss para o formato ISO 8601
+            function convertToISOFormat(dateString) {
+                const [day, month, year, hour, minute, second] = dateString.split(/[\s\/:]/);
+                return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+            }
+
+            // Função para garantir que a data seja convertida para o formato correto
+            function parseDate(dateString) {
+                // Converte a data para o formato ISO
+                const isoDate = convertToISOFormat(dateString);
+                const parsedDate = new Date(isoDate);
+                if (isNaN(parsedDate.getTime())) {
+                    return null; // Retorna null se a data for inválida
+                }
+                return parsedDate;
+            }
+
+            // Função para calcular o tempo decorrido
+            function calculateElapsedTime(startTime) {
+                const start = parseDate(startTime);
+                const now = new Date();
+
+                if (!start) {
+                    return "Tempo inválido";
+                }
+
+                const elapsedMs = now - start;
+
+                if (elapsedMs < 0) {
+                    return "Tempo inválido";
+                }
+
+                const elapsedMinutes = Math.floor(elapsedMs / 60000);
+                const elapsedSeconds = Math.floor((elapsedMs % 60000) / 1000);
+
+                return `${elapsedMinutes}m ${elapsedSeconds}s`;
+            }
+
+            // Configurar SSE
+            const eventSource = new EventSource("/api/actions/stream");
+
+            eventSource.onmessage = function (event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    // Limpa a tabela antes de preencher novamente
+                    tableBody.innerHTML = "";
+
+                    data.forEach(action => {
+                        const elapsedTime = action.fim ? "-" : calculateElapsedTime(action.inicio);
+                        const status = action.fim ? action.fim : "Em andamento";
+
+                        const row = `
+                            <tr>
+                                <td>${action.username}</td>
+                                <td>${action.estado}</td>
+                                <td>${action.diario}</td>
+                                <td>${action.status}</td>
+                                <td>${action.inicio}</td>
+                                <td>${status}</td>
+                                <td>${elapsedTime}</td>
+                            </tr>
+                        `;
+                        tableBody.innerHTML += row;
+                    });
+                } catch (error) {
+                    console.error("Erro ao processar dados do SSE:", error);
+                }
+            };
+
+            // Bloqueia alterações para usuários FUNC
+            if (userRole === "FUNC") {
+                closeShiftButton.classList.add("disabled");
+            }
+
+            // Fechar turno
+            closeShiftButton.addEventListener("click", function () {
+                if (!closeShiftButton.classList.contains("disabled")) {
+                    fetch("/api/actions/finalizar", {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ status: "F" })
+                    })
+                        .then(response => response.json())
+                        .then(data => alert(data.message))
+                        .catch(error => console.error("Erro ao fechar turno:", error));
+                }
+            });
         });
-    });
-
-
     </script>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Stream Monitor</h1>
+
+        <div class="mb-3 text-end">
+            <button id="close-shift-btn" class="btn btn-danger">Fechar Turno</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Usuário</th>
+                        <th>Estado</th>
+                        <th>Diário</th>
+                        <th>Status</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th>Tempo Decorrido</th>
+                    </tr>
+                </thead>
+                <tbody id="stream-table-body">
+                    <!-- Dados carregados em tempo real -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 </body>
+
 </html>

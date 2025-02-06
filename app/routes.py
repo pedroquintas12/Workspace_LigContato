@@ -5,14 +5,11 @@ from flask import jsonify, request
 import threading 
 from config.db_connection import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
-from modules.auth.JWT.filter.JWTAuthentication import JWTUtil
+from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required
+from time import sleep
+from app.utils.date_utils import formatar_data
 
 main_bp = Blueprint('main',__name__)
-
-
-from flask import jsonify, request
-from datetime import datetime
-import threading
 
 @main_bp.route('/register', methods=['POST'])
 def register():
@@ -143,10 +140,11 @@ def index():
 # Rota para a página do administrador
 @main_bp.route('/admin')
 def admin():
-    return render_template('admin.html')
+    return render_template('index.html')
 
 # Rota para registrar uma ação do usuário
 @main_bp.route('/api/actions/registrar', methods=['POST'])
+@token_required
 def registrar_acao():
     data = request.json
     usuario = data.get('usuario')
@@ -157,7 +155,7 @@ def registrar_acao():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO acoes_usuarios (usuario, estado, diario, status)
+        INSERT INTO log_actions (username, estado, diario, status)
         VALUES (%s, %s, %s, %s)
     ''', (usuario, estado, diario, status))
     conn.commit()
@@ -167,40 +165,81 @@ def registrar_acao():
 
 # Rota para listar todas as ações
 @main_bp.route('/api/actions/listar')
+@token_required
 def listar_acoes():
+    status = request.args.get('status')
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)  # Retorna os resultados como dicionários
-    cursor.execute('SELECT * FROM acoes_usuarios')
+    if status:
+        cursor.execute('SELECT * FROM log_actions WHERE status = %s', (status,))
+    else:
+        cursor.execute('SELECT * FROM log_actions')
     acoes = cursor.fetchall()
     conn.close()
 
     return jsonify(acoes)
 
-# Rota para atualizar o status de uma ação (ex: finalizar)
+from datetime import datetime
+
 @main_bp.route('/api/actions/finalizar/<int:id>', methods=['PUT'])
+@token_required
 def finalizar_acao(id):
+    # Obter o tempo de início da ação
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE acoes_usuarios
-        SET status = 'finalizado', fim = CURRENT_TIMESTAMP
-        WHERE id = %s
-    ''', (id,))
-    conn.commit()
-    conn.close()
+    cursor.execute('SELECT inicio FROM log_actions WHERE ID_log = %s', (id,))
+    action = cursor.fetchone()
 
+    if action:
+        inicio = action[0]
+        fim = datetime.now()
+
+        # Calcular o tempo decorrido em segundos
+        tempo_decorrido = (fim - inicio).total_seconds()
+
+        # Atualizar o status para 'F' (finalizado) e salvar o tempo decorrido
+        cursor.execute('''
+            UPDATE log_actions
+            SET status = 'F', fim = %s, tempo_decorrido = %s
+            WHERE ID_log = %s
+        ''', (fim, tempo_decorrido, id))
+        conn.commit()
+
+    conn.close()
     return jsonify({"message": "Ação finalizada com sucesso!"})
 
 # Rota para SSE (atualização em tempo real)
 @main_bp.route('/api/actions/stream')
 def stream_acoes():
     def gerar_eventos():
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
         while True:
-            cursor.execute('SELECT * FROM acoes_usuarios ')
-            acoes = cursor.fetchall()
-            yield f"data: {json.dumps(acoes)}\n\n"
-            time.sleep(5)  # Atualiza a cada 5 segundos
+            try:
+                # Consulta ao banco para buscar as ações do dia
+                data = datetime.now()
+                ano = data.year
+                mes = str(data.month).zfill(2)
+                dia = str(data.day).zfill(2)
 
-    return Response(gerar_eventos(), mimetype='text/event-stream')
+                conn = get_db_connection()
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(f"SELECT * FROM log_actions WHERE DATE(inicio) = '{ano}-{mes}-{dia}'")
+                acoes = cursor.fetchall()
+                indexed_data = {i: registro for i, registro in enumerate(acoes)}
+
+                for registro in indexed_data.values():
+                    registro['inicio'] = formatar_data(registro['inicio'])
+                    registro['fim'] = formatar_data(registro['fim'])
+
+                
+                listnmes = [indexed_data[i] for i in sorted(indexed_data)]
+
+                conn.close()
+
+                # Envia os dados no formato esperado pelo SSE
+                yield f"data: {json.dumps(listnmes)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            
+
+    return Response(gerar_eventos(), mimetype="text/event-stream")
+
