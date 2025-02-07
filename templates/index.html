@@ -7,137 +7,214 @@
     <title>Stream Monitor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .disabled {
-            pointer-events: none;
-            opacity: 0.6;
+        body {
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+
+        h1 {
+            font-weight: 600;
+            color: #343a40;
+        }
+
+        .table-container {
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table th {
+            background-color: #343a40;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.9rem;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f2f2f2;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #e9ecef;
+        }
+
+        .badge {
+            font-size: 0.85rem;
+            padding: 0.5em 0.75em;
+            border-radius: 12px;
+        }
+
+        .btn {
+            font-weight: 600;
+            border-radius: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .table th,
+            .table td {
+                font-size: 0.8rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .btn {
+                font-size: 0.85rem;
+                padding: 0.5rem 1rem;
+            }
         }
     </style>
     <script>
         let userRole = ""; // Será definido pelo backend ao carregar a página.
 
-        document.addEventListener("DOMContentLoaded", function () {
-            const tableBody = document.getElementById("stream-table-body");
+        function getStatusBadge(status) {
+            if (status === "L") return '<span class="badge bg-warning text-dark">LENDO-VSAP</span>';
+            if (status === "F") return '<span class="badge bg-success">FINALIZADO</span>';
+            if (status === "Em andamento") return '<span class="badge bg-info text-dark">EM ANDAMENTO</span>';
+            return status;
+        }
+
+        function parseDate(dateString) {
+            const [day, month, year, hour, minute, second] = dateString.split(/[\s\/:]/);
+            return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
+        }
+
+        function calculateElapsedTime(startTime) {
+            const start = parseDate(startTime);
+            const now = new Date();
+            const elapsedMs = now - start;
+
+            if (isNaN(start.getTime()) || elapsedMs < 0) return "Tempo inválido";
+
+            const minutes = Math.floor(elapsedMs / 60000);
+            const seconds = Math.floor((elapsedMs % 60000) / 1000);
+
+            return `${minutes}m ${seconds}s`;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const streamTableBody = document.getElementById("stream-table-body");
+            const logsTableBody = document.getElementById("logs-table-body");
             const closeShiftButton = document.getElementById("close-shift-btn");
 
-            // Função para converter a data de dd/MM/yyyy HH:mm:ss para o formato ISO 8601
-            function convertToISOFormat(dateString) {
-                const [day, month, year, hour, minute, second] = dateString.split(/[\s\/:]/);
-                return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-            }
-
-            // Função para garantir que a data seja convertida para o formato correto
-            function parseDate(dateString) {
-                // Converte a data para o formato ISO
-                const isoDate = convertToISOFormat(dateString);
-                const parsedDate = new Date(isoDate);
-                if (isNaN(parsedDate.getTime())) {
-                    return null; // Retorna null se a data for inválida
-                }
-                return parsedDate;
-            }
-
-            // Função para calcular o tempo decorrido
-            function calculateElapsedTime(startTime) {
-                const start = parseDate(startTime);
-                const now = new Date();
-
-                if (!start) {
-                    return "Tempo inválido";
-                }
-
-                const elapsedMs = now - start;
-
-                if (elapsedMs < 0) {
-                    return "Tempo inválido";
-                }
-
-                const elapsedMinutes = Math.floor(elapsedMs / 60000);
-                const elapsedSeconds = Math.floor((elapsedMs % 60000) / 1000);
-
-                return `${elapsedMinutes}m ${elapsedSeconds}s`;
-            }
-
-            // Configurar SSE
             const eventSource = new EventSource("/api/actions/stream");
+            eventSource.onmessage = event => {
+                const data = JSON.parse(event.data);
+                streamTableBody.innerHTML = data.map(action => {
+                    const elapsedTime = action.fim ? "-" : calculateElapsedTime(action.inicio);
+                    const status = action.fim ? action.fim : "Em andamento";
 
-            eventSource.onmessage = function (event) {
-                try {
-                    const data = JSON.parse(event.data);
-
-                    // Limpa a tabela antes de preencher novamente
-                    tableBody.innerHTML = "";
-
-                    data.forEach(action => {
-                        const elapsedTime = action.fim ? "-" : calculateElapsedTime(action.inicio);
-                        const status = action.fim ? action.fim : "Em andamento";
-
-                        const row = `
-                            <tr>
-                                <td>${action.username}</td>
-                                <td>${action.estado}</td>
-                                <td>${action.diario}</td>
-                                <td>${action.status}</td>
-                                <td>${action.inicio}</td>
-                                <td>${status}</td>
-                                <td>${elapsedTime}</td>
-                            </tr>
-                        `;
-                        tableBody.innerHTML += row;
-                    });
-                } catch (error) {
-                    console.error("Erro ao processar dados do SSE:", error);
-                }
+                    return `
+                        <tr>
+                            <td>${action.ID_log}</td>
+                            <td>${action.username}</td>
+                            <td>${action.estado}</td>
+                            <td>${action.diario}</td>
+                            <td>${getStatusBadge(action.status)}</td>
+                            <td>${action.inicio}</td>
+                            <td>${getStatusBadge(status)}</td>
+                            <td>${elapsedTime}</td>
+                        </tr>
+                    `;
+                }).join("");
             };
 
-            // Bloqueia alterações para usuários FUNC
-            if (userRole === "FUNC") {
-                closeShiftButton.classList.add("disabled");
-            }
+            if (userRole === "FUNC") closeShiftButton.classList.add("disabled");
 
-            // Fechar turno
-            closeShiftButton.addEventListener("click", function () {
+            closeShiftButton.addEventListener("click", () => {
                 if (!closeShiftButton.classList.contains("disabled")) {
                     fetch("/api/actions/finalizar", {
                         method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
+                        headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ status: "F" })
                     })
-                        .then(response => response.json())
+                        .then(res => res.json())
                         .then(data => alert(data.message))
-                        .catch(error => console.error("Erro ao fechar turno:", error));
+                        .catch(err => console.error("Erro ao fechar turno:", err));
                 }
             });
+
+            // Carregar logs
+            fetch("/api/actions/listar")
+                .then(response => response.json())
+                .then(logs => {
+                    logsTableBody.innerHTML = logs.map(log => `
+                        <tr>
+                            <td>${log.ID_log}</td>       
+                            <td>${log.username}</td>
+                            <td>${log.estado}</td>
+                            <td>${log.diario}</td>
+                            <td>${getStatusBadge(log.status)}</td>
+                            <td>${log.inicio}</td>
+                            <td>${log.fim || "-"}</td>
+                        </tr>
+                    `).join("");
+                })
+                .catch(error => console.error("Erro ao carregar logs:", error));
         });
     </script>
 </head>
 
 <body>
-    <div class="container mt-5">
+    <div class="container my-5">
         <h1 class="text-center mb-4">Stream Monitor</h1>
 
-        <div class="mb-3 text-end">
+        <div class="d-flex justify-content-end mb-3">
             <button id="close-shift-btn" class="btn btn-danger">Fechar Turno</button>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Usuário</th>
-                        <th>Estado</th>
-                        <th>Diário</th>
-                        <th>Status</th>
-                        <th>Início</th>
-                        <th>Fim</th>
-                        <th>Tempo Decorrido</th>
-                    </tr>
-                </thead>
-                <tbody id="stream-table-body">
-                    <!-- Dados carregados em tempo real -->
-                </tbody>
-            </table>
+        <!-- Tabela de stream -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-bordered">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuário</th>
+                            <th>Estado</th>
+                            <th>Diário</th>
+                            <th>Status</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                            <th>Tempo Decorrido</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stream-table-body">
+                        <!-- Dados carregados em tempo real -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tabela de logs -->
+        <h2 class="text-center mb-3">Logs de Ações</h2>
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-bordered">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuário</th>
+                            <th>Estado</th>
+                            <th>Diário</th>
+                            <th>Status</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-table-body">
+                        <!-- Logs carregados da API -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </body>

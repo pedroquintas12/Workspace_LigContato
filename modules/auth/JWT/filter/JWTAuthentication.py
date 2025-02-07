@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from collections.abc import Mapping
 from config import config
+from config.logger_config import logger
 
 
 # Classe para representar um usuário
@@ -44,9 +45,9 @@ class JWTUtil:
                 if username and expiration_date and now < datetime.utcfromtimestamp(expiration_date):
                     return True
         except jwt.ExpiredSignatureError:
-            print("Token expired.")
+            logger.warning("Token expired.")
         except jwt.InvalidTokenError:
-            print("Invalid token.")
+            logger.warning("Invalid token.")
         return False
 
     def get_username(self, token: str) -> Optional[str]:

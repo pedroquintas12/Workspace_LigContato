@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from flask import Blueprint, Response, json, jsonify, render_template, request
+from flask import Blueprint, Response, json, jsonify, make_response, render_template, request
 from app.utils.data import ConsultaBanco, InserirBanco
 from flask import jsonify, request
 import threading 
@@ -74,19 +74,20 @@ def register():
 
     return jsonify(result_holder["result"])
 
-@main_bp.route('/login', methods=['POST'])
+@main_bp.route('/login', methods=['POST', 'GET'])
 def login():
-    data = request.get_json()
-    username = data.get("username")
-    password = data.get("password")
-    origin = data.get("origin")
+    if request.method == "GET":
+        return render_template("login.html")
+    
+    if request.method == "POST":
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+        origin = data.get("origin")
 
-    # Cria um dicionário para armazenar o resultado
-    result_holder = {}
+        # Cria um dicionário para armazenar o resultado
+        result_holder = {}
 
-    # Função para realizar o login
-    def realizar_login():
-        nonlocal result_holder  # Permite modificar result_holder dentro do escopo da função
         try:
             # Busca o usuário no banco de dados
             user = ConsultaBanco.BuscarUsuario(username)
@@ -96,9 +97,8 @@ def login():
                     "codigo": 404,
                     "status": "Falha no login"
                 }
-                return
+                return jsonify(result_holder["result"]), 404
 
-       
             # Valida a senha criptografada
             if not check_password_hash(user[2], password):
                 result_holder["result"] = {
@@ -106,7 +106,7 @@ def login():
                     "codigo": 401,
                     "status": "Falha no login"
                 }
-                return
+                return jsonify(result_holder["result"]), 401
 
             jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
             # Autenticação bem-sucedida
@@ -117,19 +117,19 @@ def login():
                 "token": token,
                 "origin": origin
             }
+
+            # Criar uma resposta e adicionar o cookie
+            resp = make_response(jsonify(result_holder["result"]))
+            resp.set_cookie('api.token', token, httponly=True)
+            return resp
+
         except Exception as e:
             result_holder["result"] = {
                 "error": str(e),
                 "codigo": 500,
                 "status": "Erro durante o login"
             }
-
-    # Inicia a tarefa de login em um thread separado
-    thread = threading.Thread(target=realizar_login)
-    thread.start()
-    thread.join()  # Espera o thread terminar antes de continuar
-
-    return jsonify(result_holder["result"])
+            return jsonify(result_holder["result"]), 500
 
 
 # Rota para a página do funcionário
@@ -165,21 +165,26 @@ def registrar_acao():
 
 # Rota para listar todas as ações
 @main_bp.route('/api/actions/listar')
-@token_required
 def listar_acoes():
     status = request.args.get('status')
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)  # Retorna os resultados como dicionários
     if status:
-        cursor.execute('SELECT * FROM log_actions WHERE status = %s', (status,))
+        cursor.execute('SELECT * FROM log_actions WHERE status = %s order by ID_log', (status,))
     else:
-        cursor.execute('SELECT * FROM log_actions')
+        cursor.execute('SELECT * FROM log_actions order by ID_log desc')
     acoes = cursor.fetchall()
+    indexed_data = {i: registro for i, registro in enumerate(acoes)}
+
+    for registro in indexed_data.values():
+        registro['inicio'] = formatar_data(registro['inicio'])
+        registro['fim'] = formatar_data(registro['fim'])
+
+
+    listnmes = [indexed_data[i] for i in sorted(indexed_data)]
     conn.close()
 
     return jsonify(acoes)
-
-from datetime import datetime
 
 @main_bp.route('/api/actions/finalizar/<int:id>', methods=['PUT'])
 @token_required
