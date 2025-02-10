@@ -5,11 +5,12 @@ from flask import jsonify, request
 import threading 
 from config.db_connection import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
-from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required
+from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required,obter_token
 from time import sleep
 from app.utils.date_utils import formatar_data
 
 main_bp = Blueprint('main',__name__)
+jwt_util = JWTUtil()
 
 @main_bp.route('/register', methods=['POST'])
 def register():
@@ -108,7 +109,6 @@ def login():
                 }
                 return jsonify(result_holder["result"]), 401
 
-            jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
             # Autenticação bem-sucedida
             token = jwt_util.generate_token(username, origin, user[3])
             result_holder["result"] = {
@@ -132,22 +132,47 @@ def login():
             return jsonify(result_holder["result"]), 500
 
 
-# Rota para a página do funcionário
 @main_bp.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('Func.html')
 
-# Rota para a página do administrador
 @main_bp.route('/admin')
 def admin():
     return render_template('index.html')
+
+# Carregar o arquivo JSON com os diários por estado
+with open('diarios.json', 'r') as f:
+    diarios_data = json.load(f)
+
+@main_bp.route('/api/diarios', methods=['GET'])
+def get_diarios():
+    # Obtém os estados passados como uma string separada por vírgula
+    estados_param = request.args.get('publicationsState')
+
+    if not estados_param:
+        return jsonify({"error": "Nenhum estado fornecido"}), 400
+
+    # Divide a string de estados em uma lista
+    estados = estados_param.split(',')
+
+    result = {}
+
+    # Para cada estado, verificar se ele existe no arquivo JSON
+    for estado in estados:
+        estado = estado.strip()  # Remove espaços extras, se houver
+        if estado not in diarios_data:
+            result[estado] = {"error": "Estado não encontrado"}
+        else:
+            result[estado] = diarios_data[estado]
+
+    return jsonify(result), 200
 
 # Rota para registrar uma ação do usuário
 @main_bp.route('/api/actions/registrar', methods=['POST'])
 @token_required
 def registrar_acao():
     data = request.json
-    usuario = data.get('usuario')
+    usuario = jwt_util.get_username(obter_token())
     estado = data.get('estado')
     diario = data.get('diario')
     status = data.get('status')
@@ -161,7 +186,7 @@ def registrar_acao():
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Ação registrada com sucesso!"}), 201
+    return jsonify({"message": "Ação registrada com sucesso!"}), 200
 
 # Rota para listar todas as ações
 @main_bp.route('/api/actions/listar')
@@ -189,29 +214,42 @@ def listar_acoes():
 @main_bp.route('/api/actions/finalizar/<int:id>', methods=['PUT'])
 @token_required
 def finalizar_acao(id):
-    # Obter o tempo de início da ação
+    username = jwt_util.get_username(obter_token())
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT inicio FROM log_actions WHERE ID_log = %s', (id,))
+
+    # Verifica se a ação existe e pertence ao usuário
+    cursor.execute('''
+        SELECT inicio, username
+        FROM log_actions
+        WHERE ID_log = %s
+    ''', (id,))
     action = cursor.fetchone()
 
-    if action:
-        inicio = action[0]
-        fim = datetime.now()
+    if not action:
+        conn.close()
+        return jsonify({"error": "Ação não encontrada!"}), 404
 
-        # Calcular o tempo decorrido em segundos
-        tempo_decorrido = (fim - inicio).total_seconds()
+    if action[1] != username:
+        conn.close()
+        return jsonify({"error": "Você não tem permissão para finalizar esta ação!"}), 403
 
-        # Atualizar o status para 'F' (finalizado) e salvar o tempo decorrido
-        cursor.execute('''
-            UPDATE log_actions
-            SET status = 'F', fim = %s, tempo_decorrido = %s
-            WHERE ID_log = %s
-        ''', (fim, tempo_decorrido, id))
-        conn.commit()
+    # Calcula o tempo decorrido e atualiza a ação para finalizada
+    inicio = action[0]
+    fim = datetime.now()
+    tempo_decorrido = (fim - inicio).total_seconds()
+
+    cursor.execute('''
+        UPDATE log_actions
+        SET status = 'F', fim = %s, tempo_decorrido = %s
+        WHERE ID_log = %s
+    ''', (fim, tempo_decorrido, id))
+    conn.commit()
 
     conn.close()
+
     return jsonify({"message": "Ação finalizada com sucesso!"})
+
 
 # Rota para SSE (atualização em tempo real)
 @main_bp.route('/api/actions/stream')
@@ -227,24 +265,52 @@ def stream_acoes():
 
                 conn = get_db_connection()
                 cursor = conn.cursor(dictionary=True)
-                cursor.execute(f"SELECT * FROM log_actions WHERE DATE(inicio) = '{ano}-{mes}-{dia}'")
+                cursor.execute(f"SELECT * FROM log_actions WHERE DATE(inicio) = '{ano}-{mes}-{dia} ORDER BY id_log DESC'")
                 acoes = cursor.fetchall()
-                indexed_data = {i: registro for i, registro in enumerate(acoes)}
 
-                for registro in indexed_data.values():
+                for registro in acoes:
                     registro['inicio'] = formatar_data(registro['inicio'])
                     registro['fim'] = formatar_data(registro['fim'])
 
                 
-                listnmes = [indexed_data[i] for i in sorted(indexed_data)]
 
                 conn.close()
 
                 # Envia os dados no formato esperado pelo SSE
-                yield f"data: {json.dumps(listnmes)}\n\n"
+                yield f"data: {json.dumps(acoes)}\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
             
 
     return Response(gerar_eventos(), mimetype="text/event-stream")
+
+@main_bp.route('/api/user/actions', methods=['GET'])
+@token_required  # Supondo que você já tenha um sistema de autenticação baseado em tokens
+def get_user_actions():
+    username= jwt_util.get_username(obter_token())
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Consulta para pegar as ações do usuário que estão com status "L"
+    cursor.execute('''
+        SELECT ID_log, estado, diario
+        FROM log_actions
+        WHERE username = %s AND status = 'L'
+    ''', (username,))
+    actions = cursor.fetchall()
+
+    conn.close()
+
+    # Converte as ações para JSON
+    user_actions = [
+        {
+            'ID_log': action[0],
+            'estado': action[1],
+            'diario': action[2]
+        }
+        for action in actions
+    ]
+
+    return jsonify(user_actions)
+
 

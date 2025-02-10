@@ -4,7 +4,8 @@ from typing import Optional
 from collections.abc import Mapping
 from config import config
 from config.logger_config import logger
-
+from functools import wraps
+from flask import request, jsonify
 
 # Classe para representar um usuário
 class User:
@@ -72,21 +73,13 @@ class JWTUtil:
             print("Invalid token.")
         return None
 
-from functools import wraps
-from flask import request, jsonify
-from modules.auth.JWT.filter.JWTAuthentication import JWTUtil
+
 
 # Middleware para validar o token JWT
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = None
-
-        # Verifica se o token está presente no cabeçalho Authorization
-        if "Authorization" in request.headers:
-            auth_header = request.headers["Authorization"]
-            if auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]
+        token = obter_token()
 
         if not token:
             return jsonify({"message": "Token não fornecido."}), 401
@@ -101,3 +94,25 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
+
+
+
+def obter_token():
+    """
+    Obtém o token da requisição, seja do cabeçalho Authorization ou dos cookies.
+
+    Returns:
+        str: O token JWT extraído, ou None se não estiver presente.
+    """
+    token = None
+
+    # Verifica se o token está nos cookies
+    if 'api.token' in request.cookies:
+        token = request.cookies.get('api.token')
+
+    # Verifica se o token está no cabeçalho Authorization
+    if 'Authorization' in request.headers:
+        auth_header = request.headers['Authorization']
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    return token
