@@ -1,16 +1,15 @@
 from datetime import datetime, time
-from flask import Blueprint, Response, json, jsonify, make_response, render_template, request
+from flask import Blueprint, Response, json, jsonify, make_response, redirect, render_template, request
 from app.utils.data import ConsultaBanco, InserirBanco
 from flask import jsonify, request
 import threading 
 from config.db_connection import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
-from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required,obter_token
-from time import sleep
+from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required, obter_token
 from app.utils.date_utils import formatar_data
-
+from time import sleep
 main_bp = Blueprint('main',__name__)
-jwt_util = JWTUtil()
+jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
 
 @main_bp.route('/register', methods=['POST'])
 def register():
@@ -132,13 +131,48 @@ def login():
             return jsonify(result_holder["result"]), 500
 
 
+# Rota para a página do funcionário
 @main_bp.route('/')
+@token_required
 def index():
-    return render_template('Func.html')
+    return render_template('index.html', username= jwt_util.get_username(obter_token()))
 
 @main_bp.route('/admin')
+@token_required
+@token_required
 def admin():
-    return render_template('index.html')
+    # Verifica se a role do usuário é 'admin'
+    if jwt_util.get_role(obter_token()) != 'ADM':
+        return jsonify({"error": "Acesso negado! Você não tem permissão para acessar esta página."}), 403
+    
+    return render_template('Admin.html', username= jwt_util.get_username(obter_token()))
+
+# Carregar o arquivo JSON com os diários por estado
+with open('diarios.json', 'r') as f:
+    diarios_data = json.load(f)
+
+@main_bp.route('/api/diarios', methods=['GET'])
+def get_diarios():
+    # Obtém os estados passados como uma string separada por vírgula
+    estados_param = request.args.get('publicationsState')
+
+    if not estados_param:
+        return jsonify({"error": "Nenhum estado fornecido"}), 400
+
+    # Divide a string de estados em uma lista
+    estados = estados_param.split(',')
+
+    result = {}
+
+    # Para cada estado, verificar se ele existe no arquivo JSON
+    for estado in estados:
+        estado = estado.strip()  # Remove espaços extras, se houver
+        if estado not in diarios_data:
+            result[estado] = {"error": "Estado não encontrado"}
+        else:
+            result[estado] = diarios_data[estado]
+
+    return jsonify(result), 200
 
 # Carregar o arquivo JSON com os diários por estado
 with open('diarios.json', 'r') as f:
@@ -189,27 +223,38 @@ def registrar_acao():
     return jsonify({"message": "Ação registrada com sucesso!"}), 200
 
 # Rota para listar todas as ações
-@main_bp.route('/api/actions/listar')
-def listar_acoes():
-    status = request.args.get('status')
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)  # Retorna os resultados como dicionários
-    if status:
-        cursor.execute('SELECT * FROM log_actions WHERE status = %s order by ID_log', (status,))
-    else:
-        cursor.execute('SELECT * FROM log_actions order by ID_log desc')
-    acoes = cursor.fetchall()
-    indexed_data = {i: registro for i, registro in enumerate(acoes)}
+@main_bp.route('/api/actions/stream_listar')
+@token_required
+def stream_listar_acoes():
 
-    for registro in indexed_data.values():
-        registro['inicio'] = formatar_data(registro['inicio'])
-        registro['fim'] = formatar_data(registro['fim'])
+    def gerar_eventos():
+        while True:
+            try:
+                # Conexão com o banco de dados
+                conn = get_db_connection()
+                cursor = conn.cursor(dictionary=True)
 
+                # Consulta para pegar os logs ordenados pelo ID de forma decrescente
+                cursor.execute('SELECT * FROM log_actions ORDER BY ID_log DESC')
 
-    listnmes = [indexed_data[i] for i in sorted(indexed_data)]
-    conn.close()
+                # Obtém os resultados
+                acoes = cursor.fetchall()
 
-    return jsonify(acoes)
+                # Formata os campos 'inicio' e 'fim'
+                for registro in acoes:
+                    registro['inicio'] = formatar_data(registro['inicio'])
+                    registro['fim'] = formatar_data(registro['fim'])
+
+                # Envia os dados no formato esperado pelo SSE
+                yield f"data: {json.dumps(acoes)}\n\n"
+
+                # Atraso para o próximo envio de dados
+                sleep(5)  # Ajuste o intervalo conforme necessário
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                break
+
+    return Response(gerar_eventos(), mimetype="text/event-stream")
 
 @main_bp.route('/api/actions/finalizar/<int:id>', methods=['PUT'])
 @token_required
@@ -253,6 +298,7 @@ def finalizar_acao(id):
 
 # Rota para SSE (atualização em tempo real)
 @main_bp.route('/api/actions/stream')
+@token_required
 def stream_acoes():
     def gerar_eventos():
         while True:
@@ -265,7 +311,7 @@ def stream_acoes():
 
                 conn = get_db_connection()
                 cursor = conn.cursor(dictionary=True)
-                cursor.execute(f"SELECT * FROM log_actions WHERE DATE(inicio) = '{ano}-{mes}-{dia} ORDER BY id_log DESC'")
+                cursor.execute(f"SELECT * FROM log_actions WHERE DATE(inicio) = '{ano}-{mes}-{dia}' ORDER BY ID_log DESC")
                 acoes = cursor.fetchall()
 
                 for registro in acoes:
@@ -273,7 +319,6 @@ def stream_acoes():
                     registro['fim'] = formatar_data(registro['fim'])
 
                 
-
                 conn.close()
 
                 # Envia os dados no formato esperado pelo SSE
