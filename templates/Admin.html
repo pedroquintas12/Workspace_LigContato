@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="/static/css/Admin.css">
+    <script src="/static/js/Admin.js"></script>
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <div class="top-header">     
+        <button id="toggle-btn" class="toggle-btn">
+            <i class="material-icons">menu</i>
+        </button>
+            <span class="user-info">
+                {% if username %}
+                    | Bem-vindo, <b>{{ username }}</b>
+                {% else %}
+                    | Bem-vindo, visitante
+                {% endif %}
+            </span>
+    </div>
+
+    <!-- Barra lateral -->
+    <div id="sidebar" class="sidebar">
+        <div class="menu-item">
+            <a href="/dashboard">
+                <i class="material-icons">dashboard</i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+        <div class="menu-item">
+            <a href="/Jornais">
+                <i class="material-icons">library_books</i>
+                <span>Jornais</span>
+            </a>
+        </div>
+        <div class="menu-item">
+            <a href="/search">
+                <i class="material-icons">dashboard</i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+        <div class="menu-item">
+            <a href="/users">
+                <i class="material-icons">group</i>
+                <span>usuários</span>
+            </a>
+        </div>        <div class="menu-item">
+            <a href="/logout">
+                <i class="material-icons">exit_to_app</i>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Conteúdo principal -->
+    <div id="main-content" class="main-content">
+        <div class="container my-5">
+            <h1 class="text-center mb-4">Dashboard</h1>
+
+            <div class="d-flex justify-content-end mb-3">
+                <button id="close-shift-btn" class="btn btn-danger">Fechar Turno</button>
+            </div>
+
+            <!-- Tabela de stream -->
+            <div class="table-container">
+                <div class="table-container-scroll">
+                    <table class="table table-striped table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Estado</th>
+                                <th>Diário</th>
+                                <th>Status</th>
+                                <th>Início</th>
+                                <th>Fim</th>
+                                <th>Tempo Decorrido</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stream-table-body">
+                            <!-- Dados carregados em tempo real -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabela de logs -->
+            <h1 class="text-center mb-3">Logs de Ações</h1>
+            <div class="table-container">
+                <div class="table-container-scroll">
+                    <table class="table table-striped table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Estado</th>
+                                <th>Diário</th>
+                                <th>Status</th>
+                                <th>Início</th>
+                                <th>Fim</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body">
+                            <!-- Logs carregados da API -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

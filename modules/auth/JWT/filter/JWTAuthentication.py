@@ -80,13 +80,7 @@ from modules.auth.JWT.filter.JWTAuthentication import JWTUtil
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = None
-
-        # Verifica se o token está presente no cabeçalho Authorization
-        if "Authorization" in request.headers:
-            auth_header = request.headers["Authorization"]
-            if auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]
+        token = obter_token()
 
         if not token:
             return jsonify({"message": "Token não fornecido."}), 401
@@ -101,3 +95,24 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
+
+
+def obter_token():
+    """
+    Obtém o token da requisição, seja do cabeçalho Authorization ou dos cookies.
+
+    Returns:
+        str: O token JWT extraído, ou None se não estiver presente.
+    """
+    token = None
+
+    # Verifica se o token está nos cookies
+    if 'api.token' in request.cookies:
+        token = request.cookies.get('api.token')
+
+    # Verifica se o token está no cabeçalho Authorization
+    if 'Authorization' in request.headers:
+        auth_header = request.headers['Authorization']
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    return token
