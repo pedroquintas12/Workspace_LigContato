@@ -70,6 +70,7 @@ class ConsultaBanco:
                 db_cursor.close()  # Fecha o cursor
                 db_connection.close()  # Fecha a conexão
 
+
 class InserirBanco:
 
     @staticmethod

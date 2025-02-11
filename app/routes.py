@@ -107,8 +107,29 @@ def login():
                     "status": "Falha no login"
                 }
                 return jsonify(result_holder["result"]), 401
+            
+            if user[5] != "L":
+                result_holder["result"] = {
+                    "error": "Usuário bloqueado.",
+                    "codigo": 404,
+                    "status": "Falha no login"
+                }
+                return jsonify(result_holder["result"]), 404
 
-            # Autenticação bem-sucedida
+            # Atualiza a última data de login e status no banco de dados
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            data_hora_login = datetime.now()
+            
+            cursor.execute('''
+                UPDATE auth 
+                SET last_login = %s, status_logado = 'L' 
+                WHERE username = %s
+            ''', (data_hora_login, username))
+            conn.commit()
+            conn.close()
+
+            # Gera o token JWT
             token = jwt_util.generate_token(username, origin, user[3])
             result_holder["result"] = {
                 "id": user[0],
@@ -131,11 +152,34 @@ def login():
             return jsonify(result_holder["result"]), 500
 
 
+@main_bp.route('/logout')
+def logout():
+    response = make_response(redirect('/login'))
+    
+    # Atualiza a última data de login e status no banco de dados
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    data_hora_login = datetime.now()
+    
+    cursor.execute('''
+        UPDATE auth 
+        SET last_logout = %s, status_logado = 'N' 
+        WHERE username = %s
+    ''', (data_hora_login, jwt_util.get_username(obter_token())))
+    conn.commit()
+    conn.close()
+    
+    # Deleta todos os cookies (precisa passar o path correto)
+    cookies = request.cookies
+    for cookie_name in cookies:
+        response.delete_cookie(cookie_name, path='/')
+    
+    return response
 # Rota para a página do funcionário
 @main_bp.route('/')
 @token_required
 def index():
-    return render_template('index.html', username= jwt_util.get_username(obter_token()))
+    return render_template('index.html', username= jwt_util.get_username(obter_token()), role= jwt_util.get_role(obter_token()))
 
 @main_bp.route('/admin')
 @token_required
@@ -146,33 +190,6 @@ def admin():
         return jsonify({"error": "Acesso negado! Você não tem permissão para acessar esta página."}), 403
     
     return render_template('Admin.html', username= jwt_util.get_username(obter_token()))
-
-# Carregar o arquivo JSON com os diários por estado
-with open('diarios.json', 'r') as f:
-    diarios_data = json.load(f)
-
-@main_bp.route('/api/diarios', methods=['GET'])
-def get_diarios():
-    # Obtém os estados passados como uma string separada por vírgula
-    estados_param = request.args.get('publicationsState')
-
-    if not estados_param:
-        return jsonify({"error": "Nenhum estado fornecido"}), 400
-
-    # Divide a string de estados em uma lista
-    estados = estados_param.split(',')
-
-    result = {}
-
-    # Para cada estado, verificar se ele existe no arquivo JSON
-    for estado in estados:
-        estado = estado.strip()  # Remove espaços extras, se houver
-        if estado not in diarios_data:
-            result[estado] = {"error": "Estado não encontrado"}
-        else:
-            result[estado] = diarios_data[estado]
-
-    return jsonify(result), 200
 
 # Carregar o arquivo JSON com os diários por estado
 with open('diarios.json', 'r') as f:
@@ -358,4 +375,89 @@ def get_user_actions():
 
     return jsonify(user_actions)
 
+@main_bp.route("/api/users", methods=["GET",])
+@token_required
+def api_users():
+    # Verifica se o usuário tem permissão para acessar esta rota
+    if jwt_util.get_role(obter_token()) != "ADM":
+        return jsonify({"error": "Acesso negado! Apenas administradores podem acessar esta rota."}), 403
 
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Consulta os usuários e suas informações
+        cursor.execute('''  
+            SELECT 
+                u.username, 
+                MAX(u.last_login) AS last_login,
+                u.status_logado,
+                (
+                    SELECT la.estado
+                    FROM log_actions la
+                    WHERE la.username = u.username
+                    ORDER BY la.inicio DESC 
+                    LIMIT 1
+                ) AS ultima_acao_estado,
+                (
+                    SELECT la.diario
+                    FROM log_actions la
+                    WHERE la.username = u.username
+                    ORDER BY la.inicio DESC 
+                    LIMIT 1
+                ) AS ultima_acao_diario,
+                (
+                    SELECT la.status
+                    FROM log_actions la
+                    WHERE la.username = u.username
+                    ORDER BY la.inicio DESC 
+                    LIMIT 1
+                ) AS ultima_acao_status,
+                (
+                    SELECT la.inicio
+                    FROM log_actions la
+                    WHERE la.username = u.username
+                    ORDER BY la.inicio DESC 
+                    LIMIT 1
+                ) AS inicio_leitura
+            FROM auth u
+            LEFT JOIN log_actions l ON u.username = l.username
+            GROUP BY u.username, u.status_logado
+            ORDER BY u.username
+        ''')
+
+        usuarios = cursor.fetchall()
+
+        # Formata os dados para retornar no JSON
+        usuarios_formatados = [
+            {
+                "username": usuario["username"],
+                "last_login": formatar_data(usuario["last_login"]),  # Formata a data
+                "status_logado": usuario["status_logado"],
+                "ultima_acao": {
+                    "estado": usuario["ultima_acao_estado"],
+                    "diario": usuario["ultima_acao_diario"],
+                    "status": usuario["ultima_acao_status"],
+                    "inicio_leitura": formatar_data(usuario["inicio_leitura"])  # Formata a data
+                }
+            }
+            for usuario in usuarios
+        ]
+
+        conn.close()
+
+        return jsonify(usuarios_formatados), 200
+
+    except Exception as e:
+        conn.close()
+        return jsonify({"error": str(e)}), 500
+
+    
+@main_bp.route("/users", methods=["GET",])
+@token_required
+def users():
+    # Verifica se o usuário tem permissão para acessar esta rota
+    if jwt_util.get_role(obter_token()) != "ADM":
+        return jsonify({"error": "Acesso negado! Apenas administradores podem acessar esta rota."}), 403
+    
+    return render_template("users.html" , username = jwt_util.get_username(obter_token()), role = jwt_util.get_role(obter_token()))
