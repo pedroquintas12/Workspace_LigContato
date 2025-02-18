@@ -98,3 +98,8 @@ h1 {
     max-height: 350px;
     overflow-y: auto;
 }
+
+#diarios {
+    height: 200px; /* Aumenta a altura do select */
+    font-size: 16px; /* Ajusta o tamanho da fonte */
+}

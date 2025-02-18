@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from config import config
 from config.logger_config import logger
 from functools import wraps
-from flask import request, jsonify
+from flask import make_response, redirect, request, jsonify
 
 # Classe para representar um usuário
 class User:
@@ -47,6 +47,7 @@ class JWTUtil:
                     return True
         except jwt.ExpiredSignatureError:
             logger.warning("Token expired.")
+            
         except jwt.InvalidTokenError:
             logger.warning("Invalid token.")
         return False
@@ -82,12 +83,14 @@ def token_required(f):
         token = obter_token()
 
         if not token:
-            return jsonify({"message": "Token não fornecido."}), 401
+                response = make_response(redirect('/signin'))
 
         try:
             jwt_util = JWTUtil()
             if not jwt_util.token_valido(token):
-                return jsonify({"message": "Token inválido ou expirado."}), 401
+                response = make_response(redirect('/signin'))
+
+                return response
         except Exception as e:
             return jsonify({"message": f"Erro ao validar token: {str(e)}"}), 401
 

@@ -30,6 +30,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const toggleBtn = document.getElementById("toggle-btn");
     const mainContent = document.getElementById("main-content");
 
+    const closeShiftButton = document.getElementById('close-shift-btn');
+    closeShiftButton.addEventListener('click', () => {
+        bloquearAcesso(); // Bloqueia o acesso quando o turno é fechado
+    });
+
+    // Botão para abrir turno
+    const openShiftButton = document.getElementById('open-shift-btn');
+    openShiftButton.addEventListener('click', () => {
+        desbloquearAcesso(); // Desbloqueia o acesso quando o turno é aberto
+    });
+
     toggleBtn.addEventListener("click", () => {
         sidebar.classList.toggle("collapsed");
         mainContent.classList.toggle("shifted");
@@ -37,7 +48,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const streamTableBody = document.getElementById("stream-table-body");
     const logsTableBody = document.getElementById("logs-table-body");
-    const closeShiftButton = document.getElementById("close-shift-btn");
 
     const eventSource = new EventSource("/api/actions/stream");
     const listSource = new EventSource("/api/actions/stream_listar");
@@ -84,19 +94,78 @@ document.addEventListener("DOMContentLoaded", () => {
         }).join("");
     };
 
-    if (userRole === "FUNC") closeShiftButton.classList.add("disabled");
+    // Função para bloquear o acesso
+    async function bloquearAcesso() {
+        try {
+            const response = await fetch('/api/bloquear_acesso', {
+                method: 'GET',
+            });
 
-    closeShiftButton.addEventListener("click", () => {
-        if (!closeShiftButton.classList.contains("disabled")) {
-            fetch("/api/actions/finalizar", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "F" })
-            })
-                .then(res => res.json())
-                .then(data => alert(data.message))
-                .catch(err => console.error("Erro ao fechar turno:", err));
+            const result = await response.json();
+
+            if (response.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: result.message,
+                    showConfirmButton: false,
+                    timer: 5000,
+                    position: 'top-end',
+                    toast: true,
+                    background: '#28a745',
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: result.message,
+                });
+            }
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: "erro ao fechar turno!",
+            });
         }
-    });
+    }
+
+    // Função para desbloquear o acesso
+    async function desbloquearAcesso() {
+        try {
+            const response = await fetch('/api/desbloquear_acesso', {
+                method: 'GET',
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: result.message,
+                    showConfirmButton: false,
+                    timer: 5000,
+                    position: 'top-end',
+                    toast: true,
+                    background: '#28a745',
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: result.message,
+                });
+            }
+        } catch (err) {
+            console.error('Erro ao desbloquear o acesso:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: 'Erro ao enviar a requisição. Tente novamente.',
+            });
+        }
+    }
+
 
 });

@@ -7,9 +7,12 @@ from config.db_connection import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required, obter_token
 from app.utils.date_utils import formatar_data
-from time import sleep
+from time import sleep 
+from config.logger_config import logger
+
 main_bp = Blueprint('main',__name__)
 jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
+
 
 @main_bp.route('/register', methods=['POST'])
 def register():
@@ -74,87 +77,83 @@ def register():
 
     return jsonify(result_holder["result"])
 
-@main_bp.route('/login', methods=['POST', 'GET'])
+@main_bp.route('/login', methods=['POST'])
 def login():
-    if request.method == "GET":
-        return render_template("login.html")
-    
-    if request.method == "POST":
-        data = request.get_json()
-        username = data.get("username")
-        password = data.get("password")
-        origin = data.get("origin")
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+    origin = data.get("origin")
 
-        # Cria um dicionário para armazenar o resultado
-        result_holder = {}
+    # Cria um dicionário para armazenar o resultado
+    result_holder = {}
 
-        try:
-            # Busca o usuário no banco de dados
-            user = ConsultaBanco.BuscarUsuario(username)
-            if not user:
-                result_holder["result"] = {
-                    "error": "Usuário não encontrado.",
-                    "codigo": 404,
-                    "status": "Falha no login"
-                }
-                return jsonify(result_holder["result"]), 404
-
-            # Valida a senha criptografada
-            if not check_password_hash(user[2], password):
-                result_holder["result"] = {
-                    "error": "Senha inválida.",
-                    "codigo": 401,
-                    "status": "Falha no login"
-                }
-                return jsonify(result_holder["result"]), 401
-            
-            if user[5] != "L":
-                result_holder["result"] = {
-                    "error": "Usuário bloqueado.",
-                    "codigo": 404,
-                    "status": "Falha no login"
-                }
-                return jsonify(result_holder["result"]), 404
-
-            # Atualiza a última data de login e status no banco de dados
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            data_hora_login = datetime.now()
-            
-            cursor.execute('''
-                UPDATE auth 
-                SET last_login = %s, status_logado = 'L' 
-                WHERE username = %s
-            ''', (data_hora_login, username))
-            conn.commit()
-            conn.close()
-
-            # Gera o token JWT
-            token = jwt_util.generate_token(username, origin, user[3])
+    try:
+        # Busca o usuário no banco de dados
+        user = ConsultaBanco.BuscarUsuario(username)
+        if not user:
             result_holder["result"] = {
-                "id": user[0],
-                "username": username,
-                "token": token,
-                "origin": origin
+                "error": "Usuário não encontrado.",
+                "codigo": 404,
+                "status": "Falha no login"
             }
+            return jsonify(result_holder["result"]), 404
 
-            # Criar uma resposta e adicionar o cookie
-            resp = make_response(jsonify(result_holder["result"]))
-            resp.set_cookie('api.token', token, httponly=True)
-            return resp
-
-        except Exception as e:
+        # Valida a senha criptografada
+        if not check_password_hash(user[2], password):
             result_holder["result"] = {
-                "error": str(e),
-                "codigo": 500,
-                "status": "Erro durante o login"
+                "error": "Senha inválida.",
+                "codigo": 401,
+                "status": "Falha no login"
             }
-            return jsonify(result_holder["result"]), 500
+            return jsonify(result_holder["result"]), 401
+        
+        if user[5] != "L":
+            result_holder["result"] = {
+                "error": "Usuário bloqueado.",
+                "codigo": 404,
+                "status": "Falha no login"
+            }
+            return jsonify(result_holder["result"]), 404
+
+        # Atualiza a última data de login e status no banco de dados
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        data_hora_login = datetime.now()
+        
+        cursor.execute('''
+            UPDATE auth 
+            SET last_login = %s, status_logado = 'L' 
+            WHERE username = %s
+        ''', (data_hora_login, username))
+        conn.commit()
+        conn.close()
+
+        # Gera o token JWT
+        token = jwt_util.generate_token(username, origin, user[3])
+        result_holder["result"] = {
+            "id": user[0],
+            "username": username,
+            "token": token,
+            "origin": origin
+        }
+
+        # Criar uma resposta e adicionar o cookie
+        resp = make_response(jsonify(result_holder["result"]))
+        resp.set_cookie('api.token', token, httponly=True)
+        return resp
+
+    except Exception as e:
+        result_holder["result"] = {
+            "error": str(e),
+            "codigo": 500,
+            "status": "Erro durante o login"
+        }
+        return jsonify(result_holder["result"]), 500
 
 
 @main_bp.route('/logout')
 def logout():
-    response = make_response(redirect('/login'))
+    response = make_response(redirect('/signin'))
     
     # Atualiza a última data de login e status no banco de dados
     conn = get_db_connection()
@@ -175,21 +174,6 @@ def logout():
         response.delete_cookie(cookie_name, path='/')
     
     return response
-# Rota para a página do funcionário
-@main_bp.route('/')
-@token_required
-def index():
-    return render_template('index.html', username= jwt_util.get_username(obter_token()), role= jwt_util.get_role(obter_token()))
-
-@main_bp.route('/admin')
-@token_required
-@token_required
-def admin():
-    # Verifica se a role do usuário é 'admin'
-    if jwt_util.get_role(obter_token()) != 'ADM':
-        return jsonify({"error": "Acesso negado! Você não tem permissão para acessar esta página."}), 403
-    
-    return render_template('Admin.html', username= jwt_util.get_username(obter_token()))
 
 # Carregar o arquivo JSON com os diários por estado
 with open('diarios.json', 'r') as f:
@@ -226,7 +210,17 @@ def registrar_acao():
     usuario = jwt_util.get_username(obter_token())
     estado = data.get('estado')
     diario = data.get('diario')
-    status = data.get('status')
+    status = "L"
+
+    result_holder = {}
+
+    if not estado and not diario:
+        result_holder["result"] = {
+            "error": "Obrigatorio todos os campos.",
+            "codigo": 404,
+            "status": "Falha ao registrar estado e diario"
+        }
+        return jsonify(result_holder["result"]), 404
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -239,39 +233,80 @@ def registrar_acao():
 
     return jsonify({"message": "Ação registrada com sucesso!"}), 200
 
-# Rota para listar todas as ações
-@main_bp.route('/api/actions/stream_listar')
-@token_required
-def stream_listar_acoes():
+@main_bp.route('/api/actions/stream', methods=['GET'])
+def stream_actions():
+    def event_stream():
+        last_update = None
+        today = datetime.now().strftime('%Y-%m-%d')  # Filtra os dados apenas do dia atual
 
-    def gerar_eventos():
         while True:
             try:
-                # Conexão com o banco de dados
                 conn = get_db_connection()
                 cursor = conn.cursor(dictionary=True)
 
-                # Consulta para pegar os logs ordenados pelo ID de forma decrescente
-                cursor.execute('SELECT * FROM log_actions ORDER BY ID_log DESC')
+                # Verifica a última atualização na tabela log_updates
+                cursor.execute("SELECT MAX(last_update) as last_update FROM log_updates")
+                result = cursor.fetchone()
+                new_update = result['last_update']
 
-                # Obtém os resultados
-                acoes = cursor.fetchall()
+                if new_update and new_update != last_update:
+                    last_update = new_update
 
-                # Formata os campos 'inicio' e 'fim'
-                for registro in acoes:
-                    registro['inicio'] = formatar_data(registro['inicio'])
-                    registro['fim'] = formatar_data(registro['fim'])
+                    # Busca os registros de log_actions do dia atual
+                    cursor.execute("SELECT * FROM log_actions WHERE DATE(inicio) = %s ORDER BY ID_log DESC", (today,))
+                    acoes = cursor.fetchall()
 
-                # Envia os dados no formato esperado pelo SSE
-                yield f"data: {json.dumps(acoes)}\n\n"
+                    for registro in acoes:
+                        registro['inicio'] = formatar_data(registro['inicio'])
+                        registro['fim'] = formatar_data(registro['fim'])  
 
-                # Atraso para o próximo envio de dados
-                sleep(5)  # Ajuste o intervalo conforme necessário
+                    # Envia os dados via SSE
+                    yield f"data: {json.dumps(acoes)}\n\n"
+
+                conn.close()
+                sleep(2)  # Aguarda 2 segundos antes de verificar novamente
+
             except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
-                break
+                logger.error(f"Erro no SSE: {e}")
+                sleep(2)
+    threading.Thread(target=event_stream, daemon=True).start()
 
-    return Response(gerar_eventos(), mimetype="text/event-stream")
+    return Response(event_stream(), content_type="text/event-stream")
+    
+
+@main_bp.route('/api/actions/stream_listar')
+def stream_listar():
+    def event_stream():
+        last_update = None
+        while True:
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor(dictionary=True)
+
+                cursor.execute("SELECT MAX(last_update) as last_update FROM log_updates")
+                result = cursor.fetchone()
+                new_update = result['last_update']
+
+                if new_update and new_update != last_update:
+                    last_update = new_update
+
+                    cursor.execute("SELECT * FROM log_actions ORDER BY ID_log DESC LIMIT 10")
+                    acoes = cursor.fetchall()
+
+                    for registro in acoes:
+                        registro['inicio'] = formatar_data(registro['inicio'])
+                        registro['fim'] = formatar_data(registro['fim'])    
+
+                    yield f"data: {json.dumps(acoes)}\n\n"
+
+                conn.close()
+                sleep(2)  # Aguarda 2 segundos antes de verificar novamente
+
+            except Exception as e:
+                print(f"Erro no SSE: {e}")
+                sleep(2)
+    threading.Thread(target=event_stream, daemon=True).start()
+    return Response(event_stream(), content_type="text/event-stream")
 
 @main_bp.route('/api/actions/finalizar/<int:id>', methods=['PUT'])
 @token_required
@@ -313,41 +348,8 @@ def finalizar_acao(id):
     return jsonify({"message": "Ação finalizada com sucesso!"})
 
 
-# Rota para SSE (atualização em tempo real)
-@main_bp.route('/api/actions/stream')
-@token_required
-def stream_acoes():
-    def gerar_eventos():
-        while True:
-            try:
-                # Consulta ao banco para buscar as ações do dia
-                data = datetime.now()
-                ano = data.year
-                mes = str(data.month).zfill(2)
-                dia = str(data.day).zfill(2)
-
-                conn = get_db_connection()
-                cursor = conn.cursor(dictionary=True)
-                cursor.execute(f"SELECT * FROM log_actions WHERE DATE(inicio) = '{ano}-{mes}-{dia}' ORDER BY ID_log DESC")
-                acoes = cursor.fetchall()
-
-                for registro in acoes:
-                    registro['inicio'] = formatar_data(registro['inicio'])
-                    registro['fim'] = formatar_data(registro['fim'])
-
-                
-                conn.close()
-
-                # Envia os dados no formato esperado pelo SSE
-                yield f"data: {json.dumps(acoes)}\n\n"
-            except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
-            
-
-    return Response(gerar_eventos(), mimetype="text/event-stream")
-
 @main_bp.route('/api/user/actions', methods=['GET'])
-@token_required  # Supondo que você já tenha um sistema de autenticação baseado em tokens
+@token_required  
 def get_user_actions():
     username= jwt_util.get_username(obter_token())
     conn = get_db_connection()
@@ -451,13 +453,23 @@ def api_users():
     except Exception as e:
         conn.close()
         return jsonify({"error": str(e)}), 500
+    
+main_bp.route('/api/salvar_inatividade', methods = ['POST'])
+def salvar_inatividade():
+        data = request.get_json()
+        tempo_inatividade = data.get('tempo_inatividade')
+        user = jwt_util.get_username(obter_token())
 
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute("INSERT INTO inatividade (usuario_id, tempo_inatividade) VALUES (?, ?)", 
+                        (user, tempo_inatividade))
+            conn.commit()
+            conn.close()
+
+            return jsonify({"message": "Tempo de inatividade salvo com sucesso"}), 200
+
+        except Exception as e:
+            return jsonify({"erro ao salvar inatividade": str(e)}), 500
     
-@main_bp.route("/users", methods=["GET",])
-@token_required
-def users():
-    # Verifica se o usuário tem permissão para acessar esta rota
-    if jwt_util.get_role(obter_token()) != "ADM":
-        return jsonify({"error": "Acesso negado! Apenas administradores podem acessar esta rota."}), 403
-    
-    return render_template("users.html" , username = jwt_util.get_username(obter_token()), role = jwt_util.get_role(obter_token()))
