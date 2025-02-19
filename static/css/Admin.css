@@ -2,25 +2,26 @@ body {
     background-color: #f8f9fa;
     color: #343a40;
 }
-h1{
-    padding-top: 20px; 
-       }
+
+h1 {
+    padding-top: 20px;
+}
+
 .sidebar {
     position: fixed;
     top: 0;
     left: 0;
     height: 100%;
-    width: 200px; 
+    width: 200px;
     background-color: #343a40;
     color: #ffffff;
-    transition: transform 0.3s ease-in-out;
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
     transform: translateX(0);
 }
 
 .sidebar.collapsed {
-    transform: translateX(-100%);
-    width: 60px; /* Ajuste para uma barra mais fina */
-
+    transform: translateX(-140px);
+    width: 60px;
 }
 
 .sidebar .menu-item {
@@ -63,14 +64,17 @@ h1{
 }
 
 .main-content {
-    margin-left: 250px;
+    margin-left: 200px;
     transition: margin-left 0.3s ease-in-out;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
 }
 
 .main-content.shifted {
-    margin-left: 0;
+    margin-left: 60px;
 }
-    /* Transição suave para todos os elementos */
+
 .sidebar .menu-item .menu-text {
     opacity: 1;
     transition: opacity 0.3s ease;
@@ -78,39 +82,61 @@ h1{
 
 .sidebar.collapsed .menu-item .menu-text {
     opacity: 0;
-    pointer-events: none; /* Impede interação com o texto escondido */
+    pointer-events: none;
 }
 
-/* Ajuste da transição para margens */
 .sidebar-content {
     transition: margin 0.3s ease;
 }
 
-/* Responsividade para telas menores */
 @media (max-width: 576px) {
     .sidebar {
         width: 60px;
     }
 
-    #Container-Primario.shifted {
+    .main-content {
         margin-left: 60px;
     }
 }
 
-/* Largura da barra lateral colapsada */
-.sidebar.collapsed {
-    width: 60px; /* Ajuste para uma barra mais fina */
+#diarios {
+    height: 200px;
+    font-size: 16px;
 }
 
-/* Ajuste do conteúdo ao lado da barra lateral */
+.sidebar.collapsed {
+    width: 60px;
+}
+
 #Container-Primario.shifted {
-    margin-left: 200px; /* Deve ser igual à largura expandida da sidebar */
+    margin-left: 200px;
 }
 
 .sidebar.collapsed + #Container-Primario {
-    margin-left: 60px; /* Deve ser igual à largura colapsada da sidebar */
+    margin-left: 60px;
 }
+
+.stream-table {
+    width: auto;
+    min-width: 300px;
+    position: relative;
+}
+
 .table-container-scroll {
-        max-height: 350px; /* Ajuste a altura máxima conforme necessário */
-        overflow-y: auto; /* Ativa a barra de rolagem vertical */
-    }
+    max-height: 350px;
+    overflow-y: auto;
+    width: 100%;
+    min-width: 300px;
+    position: relative;
+}
+
+.main-content .col-md-8 {
+    flex: 1;
+}
+
+th, td {
+    word-wrap: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    max-width: 200px;
+}

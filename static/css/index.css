@@ -94,12 +94,52 @@ h1 {
     }
 }
 
-.table-container-scroll {
-    max-height: 350px;
-    overflow-y: auto;
-}
+    #diarios {
+        height: 200px; /* Aumenta a altura do select */
+        font-size: 16px; /* Ajusta o tamanho da fonte */
+    }
 
-#diarios {
-    height: 200px; /* Aumenta a altura do select */
-    font-size: 16px; /* Ajusta o tamanho da fonte */
-}
+    /* Largura da barra lateral colapsada */
+    .sidebar.collapsed {
+        width: 60px; /* Ajuste para uma barra mais fina */
+    }
+
+    /* Ajuste do conteúdo ao lado da barra lateral */
+    #Container-Primario.shifted {
+        margin-left: 200px; /* Deve ser igual à largura expandida da sidebar */
+    }
+
+    .sidebar.collapsed + #Container-Primario {
+        margin-left: 60px; /* Deve ser igual à largura colapsada da sidebar */
+    }
+
+    .stream-table {
+        width: auto; /* Mantém a largura ajustável */
+        min-width: 300px; /* Define um tamanho mínimo para a tabela */
+        position: relative; /* Mantém a posição relativa ao layout */
+    }
+    .table-container-scroll {
+        max-height: 350px; /* Altura máxima da área rolável */
+        overflow-y: auto; /* Ativa a rolagem vertical */
+        width: 100%; /* Ajusta a largura automaticamente */
+        min-width: 300px; /* Define um tamanho mínimo */
+        position: relative; /* Mantém o contexto de posicionamento */
+    }
+
+    .main-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start; /* Garante alinhamento superior */
+    }
+
+    .main-content .col-md-8 {
+        flex: 1; /* Mantém o tamanho normal dos selects */
+    }
+
+    th, td {
+        word-wrap: break-word; /* Permite quebra de palavras */
+        white-space: normal; /* Garante múltiplas linhas */
+        overflow-wrap: break-word;
+        max-width: 200px; /* Limite de largura para não expandir demais */
+    }
+    

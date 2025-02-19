@@ -1,4 +1,5 @@
 let userRole = ""; // Será definido pelo backend ao carregar a página.
+let activeLogs = [];
 
 function getStatusBadge(status) {
     if (status === "L") return '<span class="badge bg-warning text-dark">LENDO-VSAP</span>';
@@ -8,7 +9,7 @@ function getStatusBadge(status) {
 }
 
 function parseDate(dateString) {
-    const [day, month, year, hour, minute, second] = dateString.split(/[\s\/:]/);
+    const [day, month, year, hour, minute, second] = dateString.split(/[/\s:]/);
     return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
 }
 
@@ -19,27 +20,33 @@ function calculateElapsedTime(startTime) {
 
     if (isNaN(start.getTime()) || elapsedMs < 0) return "Tempo inválido";
 
+    const hours = Math.floor(elapsedMs / 3600000); // 1 hora = 3600000 ms
     const minutes = Math.floor(elapsedMs / 60000);
     const seconds = Math.floor((elapsedMs % 60000) / 1000);
 
-    return `${minutes}m ${seconds}s`;
+    return `${hours}h ${minutes}m ${seconds}s`;
 }
 
+function updateElapsedTime() {
+    document.querySelectorAll("#stream-table-body tr").forEach(row => {
+        const logId = row.cells[0].textContent;
+        const log = activeLogs.find(l => l.ID_log == logId);
+        if (log && !log.fim) {
+            row.cells[7].textContent = calculateElapsedTime(log.inicio);
+        }
+    });
+}
+function formatElapsedTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    return `${hours}h ${minutes}m ${secs}s`;
+}
 document.addEventListener("DOMContentLoaded", () => {
     const sidebar = document.getElementById("sidebar");
     const toggleBtn = document.getElementById("toggle-btn");
     const mainContent = document.getElementById("main-content");
-
-    const closeShiftButton = document.getElementById('close-shift-btn');
-    closeShiftButton.addEventListener('click', () => {
-        bloquearAcesso(); // Bloqueia o acesso quando o turno é fechado
-    });
-
-    // Botão para abrir turno
-    const openShiftButton = document.getElementById('open-shift-btn');
-    openShiftButton.addEventListener('click', () => {
-        desbloquearAcesso(); // Desbloqueia o acesso quando o turno é aberto
-    });
 
     toggleBtn.addEventListener("click", () => {
         sidebar.classList.toggle("collapsed");
@@ -47,13 +54,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const streamTableBody = document.getElementById("stream-table-body");
-    const logsTableBody = document.getElementById("logs-table-body");
+    const logsTableBody = document.getElementById("logs-table-body"); 
 
     const eventSource = new EventSource("/api/actions/stream");
     const listSource = new EventSource("/api/actions/stream_listar");
 
     eventSource.onmessage = event => {
         const data = JSON.parse(event.data);
+        activeLogs = data;
+
         streamTableBody.innerHTML = data.map(action => {
             const elapsedTime = action.fim ? "-" : calculateElapsedTime(action.inicio);
             const status = action.fim ? action.fim : "Em andamento";
@@ -72,6 +81,9 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         }).join("");
     };
+
+    setInterval(updateElapsedTime, 1000);
+
     listSource.onmessage = event => {
         const list = JSON.parse(event.data);
         logsTableBody.innerHTML = list.map(log => {
@@ -87,8 +99,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${log.estado}</td>
                     <td>${log.diario}</td>
                     <td>${getStatusBadge(log.status)}</td>
-                    <td>${log.inicio}</td>
                     <td>${getStatusBadge(status)}</td>
+                    <td>${formatElapsedTime(log.tempo_decorrido)}</td>
                 </tr>
             `;
         }).join("");

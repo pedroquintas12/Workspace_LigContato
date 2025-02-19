@@ -83,12 +83,12 @@ def token_required(f):
         token = obter_token()
 
         if not token:
-                response = make_response(redirect('/signin'))
+                response = make_response(redirect('/logout'))
 
         try:
             jwt_util = JWTUtil()
             if not jwt_util.token_valido(token):
-                response = make_response(redirect('/signin'))
+                response = make_response(redirect('/logout'))
 
                 return response
         except Exception as e:

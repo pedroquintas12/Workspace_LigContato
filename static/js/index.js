@@ -159,7 +159,6 @@ function getStatusBadge(status) {
 
     document.addEventListener("DOMContentLoaded", () => {
     const streamTableBody = document.getElementById("stream-table-body");
-
     const eventSource = new EventSource("/api/actions/stream");
     eventSource.onmessage = event => {
         const data = JSON.parse(event.data);
@@ -167,7 +166,6 @@ function getStatusBadge(status) {
             const status = action.fim ? action.fim : "Em andamento";
             return `
                 <tr>
-                    <td>${action.ID_log}</td>
                     <td>${action.username}</td>
                     <td>${action.estado}</td>
                     <td>${action.diario}</td>
@@ -181,13 +179,13 @@ function getStatusBadge(status) {
 document.addEventListener("DOMContentLoaded", () => {
     reiniciarTemporizadorInatividade();
     iniciarStreamStatus();
+    atualizarUserActions();
 });
 
 
 // Função para verificar o status do sistema usando SSE
 function iniciarStreamStatus() {
     const eventSource = new EventSource('/api/stream_status');
-    console.log("stream iniciado!")
     eventSource.onmessage = function(event) {
         const status = event.data;
 
@@ -220,41 +218,33 @@ let inatividadeContador = 0;  // Contador de tempo após exibição da mensagem
 function exibirMensagemInatividade() {
     Swal.fire({
         icon: 'warning',
-        title: 'Sessão Expirada',
-        text: 'Você ficou inativo por muito tempo. A sessão será encerrada.',
-        showConfirmButton: false,
-        timer: 5000,  // A mensagem ficará visível por 5 segundos
-        background: '#ffc107',
+        title: 'Você ainda está aí?',
+        text: 'Você ficou inativo por muito tempo. Volte a trabalhar ou será notificado.',
+        showConfirmButton: true,
+    }).then(() => {
+        // Calcula o tempo que levou para clicar em "OK"
+        tempoConfirmacao = (Date.now() - inatividadeMensagemStartTime) / 1000 / 60; // Em minutos
+
+        // Verifica se o tempo foi igual ou maior que 5 minutos
+        if (tempoConfirmacao >= 5) {
+            salvarInatividade(tempoConfirmacao);
+        }
+
+        // Reinicia o temporizador de inatividade após o usuário confirmar
+        reiniciarTemporizadorInatividade();
     });
 
-    // Inicia o contador de inatividade após a exibição da mensagem
+    // Salva o momento em que a mensagem foi exibida
     inatividadeMensagemStartTime = Date.now();
-    
-    // Aguardar mais 5 minutos após exibição da mensagem para salvar a inatividade no banco
-    setTimeout(verificarInatividade, 300000);  // 5 minutos após exibição da mensagem
-}
-
-// Função para verificar o tempo de inatividade e salvar se necessário
-async function verificarInatividade() {
-    // Calcula o tempo total de inatividade desde a exibição da mensagem
-    const tempoTotalInatividade = (Date.now() - inatividadeMensagemStartTime) / 1000 / 60;  // Em minutos
-
-    if (tempoTotalInatividade >= 5) {
-        // Envia o tempo de inatividade para o servidor para salvar no banco de dados
-        salvarInatividade(tempoTotalInatividade);
-    }
 }
 
 // Função para reiniciar o temporizador de inatividade
 function reiniciarTemporizadorInatividade() {
-    // Limpa o temporizador anterior, caso haja
     clearTimeout(inatividadeTimeout);
-
-    // Atualiza o tempo de início da inatividade
     inatividadeStartTime = Date.now();
-
-    // Define um novo temporizador de 1 minuto
-    inatividadeTimeout = setTimeout(exibirMensagemInatividade, 60000);  // 60000 ms = 1 minuto
+    
+    // Define um novo temporizador de 5 minutos para exibir a mensagem
+    inatividadeTimeout = setTimeout(exibirMensagemInatividade, 5 * 60000);
 }
 
 // Função para enviar o tempo de inatividade para o servidor
@@ -266,7 +256,7 @@ async function salvarInatividade(totalInatividade) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                tempo_inatividade: totalInatividade,  // Tempo de inatividade em minutos
+                tempo_inatividade: totalInatividade,
             }),
         });
 
@@ -280,7 +270,7 @@ async function salvarInatividade(totalInatividade) {
     }
 }
 
-// Adiciona eventos de interação do usuário (mouse, teclado, etc)
+// Adiciona eventos de interação do usuário para reiniciar o temporizador
 document.addEventListener("mousemove", reiniciarTemporizadorInatividade);
 document.addEventListener("keydown", reiniciarTemporizadorInatividade);
 document.addEventListener("click", reiniciarTemporizadorInatividade);

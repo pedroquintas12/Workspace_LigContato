@@ -34,24 +34,27 @@
                 <span>Dashboard</span>
             </a>
         </div>
+        {% if role == "ADM" %}
         <div class="menu-item">
             <a href="/">
                 <i class="material-icons">library_books</i>
                 <span>Jornais</span>
             </a>
         </div>
+            <div class="menu-item">
+                <a href="/admin">
+                    <i class="material-icons">dashboard</i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="menu-item">
+                <a href="/users">
+                    <i class="material-icons">group</i>
+                    <span>Usuários</span>
+                </a>
+            </div>
+        {% endif %}
         <div class="menu-item">
-            <a href="/search">
-                <i class="material-icons">dashboard</i>
-                <span>Dashboard</span>
-            </a>
-        </div>
-        <div class="menu-item">
-            <a href="/users">
-                <i class="material-icons">group</i>
-                <span>usuários</span>
-            </a>
-        </div>        <div class="menu-item">
             <a href="/logout">
                 <i class="material-icons">exit_to_app</i>
                 <span>Sair</span>
@@ -104,8 +107,8 @@
                                 <th>Estado</th>
                                 <th>Diário</th>
                                 <th>Status</th>
-                                <th>Início</th>
                                 <th>Fim</th>
+                                <th>Tempo Total</th>
                             </tr>
                         </thead>
                         <tbody id="logs-table-body">

@@ -24,7 +24,7 @@ def admin():
     if jwt_util.get_role(obter_token()) != 'ADM':
         return jsonify({"error": "Acesso negado! Você não tem permissão para acessar esta página."}), 403
     
-    return render_template('Admin.html', username= jwt_util.get_username(obter_token()))
+    return render_template('Admin.html', username= jwt_util.get_username(obter_token()),role= jwt_util.get_role(obter_token()))
 
 # pagina de monitoramento dos usuarios
 @front_bp.route("/users", methods=["GET",])

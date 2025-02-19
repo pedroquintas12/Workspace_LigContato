@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tela de Funcionário</title>
-    <!-- Importando o Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="/static/css/index.css">
+    <style>
 
+    </style>
 </head>
 <body>
-    <!-- Barra superior -->
     <div class="top-header">
         <button id="toggle-btn" class="toggle-btn">
             <i class="material-icons">menu</i>
@@ -24,8 +24,6 @@
             {% endif %}
         </span>
     </div>
-
-    <!-- Barra lateral -->
     <div class="sidebar" id="sidebar">
         <div class="menu-item">
             <a href="/dashboard">
@@ -34,6 +32,12 @@
             </a>
         </div>
         {% if role == "ADM" %}
+        <div class="menu-item">
+            <a href="/">
+                <i class="material-icons">library_books</i>
+                <span>Jornais</span>
+            </a>
+        </div>
             <div class="menu-item">
                 <a href="/admin">
                     <i class="material-icons">dashboard</i>
@@ -47,7 +51,6 @@
                 </a>
             </div>
         {% endif %}
-
         <div class="menu-item">
             <a href="/logout">
                 <i class="material-icons">exit_to_app</i>
@@ -55,15 +58,11 @@
             </a>
         </div>
     </div>
-
-    <!-- Conteúdo principal -->
-    <div class="main-content">
+    <div class="main-content" id="Container-Primario">
         <div class="container mt-5">
             <h1 class="text-center mb-4">Tela de Funcionário</h1>
             <div class="row">
-                <!-- Coluna principal -->
                 <div class="col-md-8">
-                    <!-- Select de Estados -->
                     <div class="mb-3">
                         <label for="estados" class="form-label">Estados</label>
                         <select id="estados" class="form-select" multiple onchange="atualizarDiarios()">
@@ -94,32 +93,38 @@
                             <option value="SP">São Paulo</option>
                             <option value="SE">Sergipe</option>
                             <option value="TO">Tocantins</option>
-                            <option value="TS">Tribuinais Superiores</option>
-
+                            <option value="TS">Tribunais Superiores</option>
                         </select>
                     </div>
-
-                    <!-- Select de Diários -->
                     <div class="mb-3">
                         <label for="diarios" class="form-label">Diários</label>
                         <select id="diarios" class="form-select" multiple></select>
                     </div>
-
-                    <!-- Botão de Adicionar -->
                     <button class="btn btn-primary w-100" onclick="adicionar()">Adicionar</button>
+                    <h4 class="text-center mt-4">Seus Estados e Diários</h4>
+                    <div class="lateral-section" id="user-actions"></div>
                 </div>
-
-                <!-- Coluna lateral -->
-                <div class="col-md-4">
-                    <h4 class="text-center">Seus Estados e Diários</h4>
-                    <div class="lateral-section" id="user-actions">
-                        <!-- Estados e diários do usuário serão listados aqui -->
+                <div class="stream-table">
+                    <h4 class="text-center">Dados do Usuário</h4>
+                    <div class="col-md-4 table-container-scroll" id="table_stream">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Estado</th>
+                                    <th>Diário</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stream-table-body">
+                                <!-- Dados serão inseridos dinamicamente aqui -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/index.js"></script>

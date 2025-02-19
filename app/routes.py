@@ -224,10 +224,37 @@ def registrar_acao():
 
     conn = get_db_connection()
     cursor = conn.cursor()
+    # Verifica se já existe um registro ativo para o mesmo usuário, estado e diário
     cursor.execute('''
-        INSERT INTO log_actions (username, estado, diario, status)
-        VALUES (%s, %s, %s, %s)
-    ''', (usuario, estado, diario, status))
+        SELECT username FROM log_actions 
+        WHERE estado = %s AND diario = %s AND status = 'L'
+    ''', (estado, diario))
+
+    existing_action = cursor.fetchone()
+
+    if existing_action:
+        conn.close()
+
+        if usuario == existing_action[0]:
+            return jsonify({
+            "error": f"Você está lendo esse diario",
+            "codigo": 409,  # Código 409 indica conflito
+            "status": "Duplicidade detectada"
+        }), 409
+
+        return jsonify({
+            "error": f"{existing_action[0]} está lendo esse diario",
+            "codigo": 409,  # Código 409 indica conflito
+            "status": "Duplicidade detectada"
+        }), 409
+
+    cursor.execute('''SELECT ID_auth from auth where username = %s''', (usuario,))
+    user = cursor.fetchone()
+    
+    cursor.execute('''
+        INSERT INTO log_actions (ID_auth,username,estado, diario, status)
+        VALUES (%s,%s, %s, %s, %s)
+    ''', (user[0],usuario, estado, diario, status))
     conn.commit()
     conn.close()
 
@@ -290,7 +317,7 @@ def stream_listar():
                 if new_update and new_update != last_update:
                     last_update = new_update
 
-                    cursor.execute("SELECT * FROM log_actions ORDER BY ID_log DESC LIMIT 10")
+                    cursor.execute("SELECT * FROM log_actions ORDER BY ID_log DESC")
                     acoes = cursor.fetchall()
 
                     for registro in acoes:
@@ -392,6 +419,7 @@ def api_users():
         cursor.execute('''  
             SELECT 
                 u.username, 
+                u.ID_auth,
                 MAX(u.last_login) AS last_login,
                 u.status_logado,
                 (
@@ -424,7 +452,7 @@ def api_users():
                 ) AS inicio_leitura
             FROM auth u
             LEFT JOIN log_actions l ON u.username = l.username
-            GROUP BY u.username, u.status_logado
+            GROUP BY u.username,u.ID_auth, u.status_logado
             ORDER BY u.username
         ''')
 
@@ -434,6 +462,7 @@ def api_users():
         usuarios_formatados = [
             {
                 "username": usuario["username"],
+                "ID_auth": usuario["ID_auth"],
                 "last_login": formatar_data(usuario["last_login"]),  # Formata a data
                 "status_logado": usuario["status_logado"],
                 "ultima_acao": {
@@ -454,7 +483,8 @@ def api_users():
         conn.close()
         return jsonify({"error": str(e)}), 500
     
-main_bp.route('/api/salvar_inatividade', methods = ['POST'])
+@main_bp.route('/api/salvar_inatividade', methods = ['POST'])
+@token_required
 def salvar_inatividade():
         data = request.get_json()
         tempo_inatividade = data.get('tempo_inatividade')
@@ -463,8 +493,14 @@ def salvar_inatividade():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            cursor.execute("INSERT INTO inatividade (usuario_id, tempo_inatividade) VALUES (?, ?)", 
-                        (user, tempo_inatividade))
+            cursor.execute('''SELECT ID_auth from auth where username = %s''', (user,))
+            user_id = cursor.fetchone()
+
+            cursor.execute('''SELECT ID_log from log_actions where username = %s and status=L''', (user,))
+            id_log = cursor.fetchone()
+
+            cursor.execute("INSERT INTO auth_inatividade (ID_auth,ID_log,username, tempo_inatividade) VALUES (%s,%s,%s, %s)", 
+                        (user_id['ID_auth'],id_log['ID_log'],user, tempo_inatividade))
             conn.commit()
             conn.close()
 
@@ -472,4 +508,54 @@ def salvar_inatividade():
 
         except Exception as e:
             return jsonify({"erro ao salvar inatividade": str(e)}), 500
-    
+        
+@main_bp.route('/api/users/<int:id>/history', methods=["GET"])
+@token_required
+def get_user_history(id):
+
+    # Verifica se o usuário tem permissão para acessar o histórico
+    if jwt_util.get_role(obter_token()) != "ADM":
+        return jsonify({"error": "Acesso negado!"}), 403
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Consulta o histórico do usuário
+        cursor.execute('''
+            SELECT
+                la.inicio,
+                la.fim,
+                la.estado,
+                la.diario,
+                la.status,
+                (
+                    SELECT ai.tempo_inatividade
+                    FROM auth_inatividade ai
+                    WHERE la.ID_auth = ai.ID_auth
+                    LIMIT 1
+                ) AS tempo_inativo 
+            FROM log_actions la
+            WHERE la.ID_auth = %s
+            ORDER BY la.inicio DESC
+        ''', (id,))
+
+        history_data = cursor.fetchall()
+
+        # Formata os dados para enviar como resposta
+        history_formatted = [
+            {
+                "timestamp": formatar_data(entry["inicio"]),
+                "acao": f'{entry["estado"]} - {entry["diario"]}',
+                "tempo_inativo": entry["tempo_inativo"] or "N/A"
+            }
+            for entry in history_data
+        ]
+
+        conn.close()
+
+        return jsonify(history_formatted), 200
+
+    except Exception as e:
+        conn.close()
+        return jsonify({"error": str(e)}), 500
