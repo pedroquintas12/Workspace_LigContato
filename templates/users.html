@@ -9,10 +9,12 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="/static/css/users.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.9/dist/sweetalert2.min.css">
+    <link rel="icon" href="https://resources-lig.s3.amazonaws.com/images/logo-thumbnail-whatsapp.png">
+
 </head>
 <body>
     <!-- Barra lateral -->
-    <div class="sidebar" id="sidebar">
+    <div id="sidebar" class="sidebar">
         <div class="menu-item">
             <a href="/dashboard">
                 <i class="material-icons">dashboard</i>
@@ -26,18 +28,24 @@
                 <span>Jornais</span>
             </a>
         </div>
-        <div class="menu-item">
-            <a href="/admin">
-                <i class="material-icons">dashboard</i>
-                <span>Dashboard</span>
-            </a>
-        </div>
-        <div class="menu-item">
-            <a href="/users">
-                <i class="material-icons">group</i>
-                <span>Usuários</span>
-            </a>
-        </div>
+            <div class="menu-item">
+                <a href="/admin">
+                    <i class="material-icons">dashboard</i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="menu-item">
+                <a href="/relatorio" title="Relatório">
+                    <i class="material-icons">assessment</i>
+                    <span class="menu-text">Relatório</span>
+                </a>
+            </div>
+            <div class="menu-item">
+                <a href="/users">
+                    <i class="material-icons">group</i>
+                    <span>Usuários</span>
+                </a>
+            </div>
         {% endif %}
         <div class="menu-item">
             <a href="/logout">
@@ -63,7 +71,7 @@
 
     <!-- Conteúdo principal -->
     <div class="container">
-        <h1>Lista de Usuários</h1>
+        <h1>Usuários</h1>
 
         <div id="error-message" class="alert alert-danger d-none"></div>
 
@@ -77,11 +85,8 @@
                     <tr>
                         <th>Usuário</th>
                         <th>Último Login</th>
+                        <th>Último Logout</th>
                         <th>Status</th>
-                        <th>Última Ação - Estado</th>
-                        <th>Última Ação - Diário</th>
-                        <th>Última Ação - Status</th>
-                        <th>Início da Leitura</th>
                     </tr>
                 </thead>
                 <tbody id="user-table-body">

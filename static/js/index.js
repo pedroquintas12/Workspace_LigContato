@@ -36,10 +36,12 @@ function getStatusBadge(status) {
     async function adicionar() {
         const estado = Array.from(document.getElementById('estados').selectedOptions).map(option => option.value);
         const diario = Array.from(document.getElementById('diarios').selectedOptions).map(option => option.value);
+        const complementoMarcado = document.getElementById('complementoCheckbox').checked; 
 
         const data = {
             estado: estado.join(','), 
-            diario: diario.join(',')
+            diario: diario.join(','),
+            complemento : complementoMarcado
         };
 
         try {
@@ -132,6 +134,9 @@ function getStatusBadge(status) {
                 <div class="mb-3 p-2 border rounded">
                     <p><strong>Estado:</strong> ${action.estado}</p>
                     <p><strong>Diário:</strong> ${action.diario}</p>
+                    <td  style="text-align: center; vertical-align: middle;">
+                       <strong>Complemento </strong> <input class="form-check-input" type="checkbox" ${action.complemento ? "checked" : ""} disabled>
+                    </td>
                     <button class="btn btn-sm btn-success w-100" onclick="finalizarAcao(${action.ID_log})">Finalizar</button>
                 </div>
             `).join('');
@@ -157,30 +162,38 @@ function getStatusBadge(status) {
             });
         });
 
-    document.addEventListener("DOMContentLoaded", () => {
-    const streamTableBody = document.getElementById("stream-table-body");
-    const eventSource = new EventSource("/api/actions/stream");
-    eventSource.onmessage = event => {
-        const data = JSON.parse(event.data);
-        streamTableBody.innerHTML = data.map(action => {
-            const status = action.fim ? action.fim : "Em andamento";
-            return `
-                <tr>
-                    <td>${action.username}</td>
-                    <td>${action.estado}</td>
-                    <td>${action.diario}</td>
-                    <td>${getStatusBadge(action.status)}</td>
-                </tr>
-            `;
-        }).join("");
-    };
-});
+        document.addEventListener("DOMContentLoaded", () => {
+            const streamTableBody = document.getElementById("stream-table-body");
+            const eventSource = new EventSource("/api/actions/stream");
+            reiniciarTemporizadorInatividade();
+            iniciarStreamStatus();
+            atualizarUserActions();
+        
+            eventSource.onmessage = event => {
+                const data = JSON.parse(event.data);
+                streamTableBody.innerHTML = data.map(action => {
+                    const status = action.fim ? action.fim : "Em andamento";
+        
+                    // Renderiza o checkbox com base no valor de complemento
+                    const complementoCheckbox = `
+                        <input type="checkbox" class="form-check-input"${action.complemento ? "checked" : ""} disabled>
+                    `;
+        
+                    return `
+                        <tr>
+                            <td>${action.username}</td>
+                            <td>${action.estado}</td>
+                            <td>${action.diario}</td>
+                            <td>${complementoCheckbox}</td>
+                            <td>${getStatusBadge(action.status)}</td>
+                        </tr>
+                    `;
+                }).join("");
+            };
+        });
+        
 
-document.addEventListener("DOMContentLoaded", () => {
-    reiniciarTemporizadorInatividade();
-    iniciarStreamStatus();
-    atualizarUserActions();
-});
+    
 
 
 // Função para verificar o status do sistema usando SSE
@@ -219,8 +232,10 @@ function exibirMensagemInatividade() {
     Swal.fire({
         icon: 'warning',
         title: 'Você ainda está aí?',
-        text: 'Você ficou inativo por muito tempo. Volte a trabalhar ou será notificado.',
+        text: 'Você ficou inativo por muito tempo! Deseja continuar?',
         showConfirmButton: true,
+        allowOutsideClick: false,
+        allowEscapeKey: false        
     }).then(() => {
         // Calcula o tempo que levou para clicar em "OK"
         tempoConfirmacao = (Date.now() - inatividadeMensagemStartTime) / 1000 / 60; // Em minutos

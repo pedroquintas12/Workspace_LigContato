@@ -9,6 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="/static/css/Admin.css">
+    <link rel="icon" href="https://resources-lig.s3.amazonaws.com/images/logo-thumbnail-whatsapp.png">
+
     <script src="/static/js/Admin.js"></script>
 </head>
 <body>
@@ -48,6 +50,12 @@
                 </a>
             </div>
             <div class="menu-item">
+                <a href="/relatorio" title="Relatório">
+                    <i class="material-icons">assessment</i>
+                    <span class="menu-text">Relatório</span>
+                </a>
+            </div>
+            <div class="menu-item">
                 <a href="/users">
                     <i class="material-icons">group</i>
                     <span>Usuários</span>
@@ -82,9 +90,9 @@
                                 <th>Usuário</th>
                                 <th>Estado</th>
                                 <th>Diário</th>
+                                <th>Complemento</th>
                                 <th>Status</th>
                                 <th>Início</th>
-                                <th>Fim</th>
                                 <th>Tempo Decorrido</th>
                             </tr>
                         </thead>
@@ -97,6 +105,16 @@
 
             <!-- Tabela de logs -->
             <h1 class="text-center mb-3">Logs de Ações</h1>
+
+            <!-- Controle de Paginação -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <button id="prev-page" class="btn btn-primary">Anterior</button>
+                    <span id="page-info">Página 1</span>
+                    <button id="next-page" class="btn btn-primary">Próximo</button>
+                </div>
+            </div>
+            
             <div class="table-container">
                 <div class="table-container-scroll">
                     <table class="table table-striped table-hover table-bordered">
@@ -106,7 +124,9 @@
                                 <th>Usuário</th>
                                 <th>Estado</th>
                                 <th>Diário</th>
+                                <th>Complemento</th>
                                 <th>Status</th>
+                                <th>Início</th>
                                 <th>Fim</th>
                                 <th>Tempo Total</th>
                             </tr>
@@ -116,7 +136,7 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </div>            
         </div>
     </div>
 </body>

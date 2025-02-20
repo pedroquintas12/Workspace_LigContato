@@ -7,6 +7,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="/static/css/index.css">
+    <link rel="icon" href="https://resources-lig.s3.amazonaws.com/images/logo-thumbnail-whatsapp.png">
+
     <style>
 
     </style>
@@ -24,7 +26,7 @@
             {% endif %}
         </span>
     </div>
-    <div class="sidebar" id="sidebar">
+    <div id="sidebar" class="sidebar">
         <div class="menu-item">
             <a href="/dashboard">
                 <i class="material-icons">dashboard</i>
@@ -45,6 +47,12 @@
                 </a>
             </div>
             <div class="menu-item">
+                <a href="/relatorio" title="Relatório">
+                    <i class="material-icons">assessment</i>
+                    <span class="menu-text">Relatório</span>
+                </a>
+            </div>
+            <div class="menu-item">
                 <a href="/users">
                     <i class="material-icons">group</i>
                     <span>Usuários</span>
@@ -60,7 +68,7 @@
     </div>
     <div class="main-content" id="Container-Primario">
         <div class="container mt-5">
-            <h1 class="text-center mb-4">Tela de Funcionário</h1>
+            <h1 class="text-center mb-4">WorkSpace</h1>
             <div class="row">
                 <div class="col-md-8">
                     <div class="mb-3">
@@ -99,6 +107,12 @@
                     <div class="mb-3">
                         <label for="diarios" class="form-label">Diários</label>
                         <select id="diarios" class="form-select" multiple></select>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="complementoCheckbox">
+                            <label class="form-check-label" for="complementoCheckbox">
+                                Complemento
+                            </label>
+                        </div>
                     </div>
                     <button class="btn btn-primary w-100" onclick="adicionar()">Adicionar</button>
                     <h4 class="text-center mt-4">Seus Estados e Diários</h4>
@@ -113,6 +127,7 @@
                                     <th>Username</th>
                                     <th>Estado</th>
                                     <th>Diário</th>
+                                    <th>Complemento</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>

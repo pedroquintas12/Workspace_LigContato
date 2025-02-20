@@ -11,6 +11,18 @@ function getStatuslogin(status) {
     return status;
 }
 
+function formatElapsedTime(seconds) {
+
+    if (seconds === null || seconds === undefined || isNaN(seconds)) {
+        return "Em andamento";
+    }
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    return `${hours}h ${minutes}m ${secs}s`;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("user-table-body");
     const errorMessage = document.getElementById("error-message");
@@ -38,11 +50,8 @@ document.addEventListener("DOMContentLoaded", () => {
             row.innerHTML = `
                 <td>${user.username}</td>
                 <td>${user.last_login || "N/A"}</td>
+                <td>${user.last_logout || "N/A"}</td>
                 <td>${getStatuslogin(user.status_logado) || "N/A"}</td>
-                <td>${user.ultima_acao.estado || "N/A"}</td>
-                <td>${user.ultima_acao.diario || "N/A"}</td>
-                <td>${getStatusBadge(user.ultima_acao.status) || "N/A"}</td>
-                <td>${user.ultima_acao.inicio_leitura || "N/A"}</td>
             `;
 
             // Adiciona evento de clique para buscar histórico
@@ -81,8 +90,12 @@ function showUserHistory(username, historyData) {
         <table class="table table-bordered table-striped">
             <thead>
                 <tr>
-                    <th>Timestamp</th>
-                    <th>Ação</th>
+                    <th>Incio da Leitura</th>
+                    <th>Estado</th>
+                    <th>Diario</th>
+                    <th>Complemento</th>
+                    <th>Tempo decorrido</th>
+                    <th>Status</th>
                     <th>Tempo Inativo</th>
                 </tr>
             </thead>
@@ -91,14 +104,20 @@ function showUserHistory(username, historyData) {
 
     // Se não houver dados, exibe mensagem de "Sem histórico"
     if (historyData.length === 0) {
-        historyHtml += "<tr><td colspan='3'>Sem histórico disponível.</td></tr>";
+        historyHtml += "<tr><td colspan='5'>Sem histórico disponível.</td></tr>";
     } else {
         // Adiciona as entradas do histórico na tabela
         historyData.forEach(entry => {
             historyHtml += `
                 <tr>
                     <td>${entry.timestamp}</td>
-                    <td>${entry.acao}</td>
+                    <td>${entry.estado}</td>
+                    <td>${entry.diario}</td>
+                    <td style="text-align: center; vertical-align: middle;">
+                        <input class="form-check-input" type="checkbox" ${entry.complemento ? "checked" : ""} disabled>
+                    </td>
+                    <td>${getStatusBadge(formatElapsedTime(entry.tempo_decorrido))}</td>
+                    <td>${getStatusBadge(entry.status)}</td>
                     <td>${entry.tempo_inativo || "N/A"}</td>
                 </tr>
             `;

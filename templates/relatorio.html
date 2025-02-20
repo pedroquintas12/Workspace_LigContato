@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exibição de Dados do Usuário</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="icon" href="https://resources-lig.s3.amazonaws.com/images/logo-thumbnail-whatsapp.png">
+  <link rel="stylesheet" href="/static/css/relatorio.css">
+</head>
+
+<body>
+    <!-- Cabeçalho -->
+    <div class="top-header">     
+        <button id="toggle-btn" class="toggle-btn">
+            <i class="material-icons">menu</i>
+        </button>
+        <span class="user-info">
+            {% if username %}
+                | Bem-vindo, <b>{{ username }}</b>
+            {% else %}
+                | Bem-vindo, visitante
+            {% endif %}
+        </span>
+    </div>
+
+    <!-- Barra lateral -->
+    <div id="sidebar" class="sidebar">
+        <div class="menu-item">
+            <a href="/dashboard">
+                <i class="material-icons">dashboard</i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+        {% if role == "ADM" %}
+        <div class="menu-item">
+            <a href="/">
+                <i class="material-icons">library_books</i>
+                <span>Jornais</span>
+            </a>
+        </div>
+        <div class="menu-item">
+            <a href="/admin">
+                <i class="material-icons">dashboard</i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+        <div class="menu-item">
+            <a href="/relatorio" title="Relatório">
+                <i class="material-icons">assessment</i>
+                <span class="menu-text">Relatório</span>
+            </a>
+        </div>
+        <div class="menu-item">
+            <a href="/users">
+                <i class="material-icons">group</i>
+                <span>Usuários</span>
+            </a>
+        </div>
+        {% endif %}
+        <div class="menu-item">
+            <a href="/logout">
+                <i class="material-icons">exit_to_app</i>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="container mt-5">
+        <h1 class="text-center">Monitoramento de Usuários</h1>
+        
+        <form id="FuncionarioForm" class="mt-4">
+            <label for="UserSelect">Selecione um usuário:</label>
+            <select id="UserSelect" class="form-select" required>
+                <option value="">Carregando usuários...</option>
+            </select>
+
+            <label for="DataInicio" class="mt-3">Data Início:</label>
+            <input type="date" id="DataInicio" class="form-control">
+
+            <label for="DataFim" class="mt-3">Data Fim:</label>
+            <input type="date" id="DataFim" class="form-control">
+
+            <button type="button" id="BuscarDados" class="btn btn-primary mt-3">Buscar</button>
+        </form>        <!-- Controles de Paginação -->
+        <div id="pagination" class="mt-4 text-center">
+            <button id="previousPage" class="btn btn-primary" disabled>Anterior</button>
+            <span id="pageInfo"></span>
+            <button id="nextPage" class="btn btn-primary">Próxima</button>
+        </div>
+
+        <div id="UserInfo" class="mt-4"></div>
+
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/static/js/relatorio.js"></script>
+</body>
+</html>

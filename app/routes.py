@@ -83,6 +83,7 @@ def login():
     username = data.get("username")
     password = data.get("password")
     origin = data.get("origin")
+    data_hora_login = datetime.now()
 
     # Cria um dicionário para armazenar o resultado
     result_holder = {}
@@ -114,11 +115,19 @@ def login():
                 "status": "Falha no login"
             }
             return jsonify(result_holder["result"]), 404
+        
+        if user[6]!= "N":
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('''UPDATE auth SET last_logout= %s, status_logado = 'N'
+                           WHERE username = %s''',(data_hora_login, username))
+            conn.commit()
+            conn.close()
+
 
         # Atualiza a última data de login e status no banco de dados
         conn = get_db_connection()
         cursor = conn.cursor()
-        data_hora_login = datetime.now()
         
         cursor.execute('''
             UPDATE auth 
@@ -153,8 +162,6 @@ def login():
 
 @main_bp.route('/logout')
 def logout():
-    response = make_response(redirect('/signin'))
-    
     # Atualiza a última data de login e status no banco de dados
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -167,7 +174,8 @@ def logout():
     ''', (data_hora_login, jwt_util.get_username(obter_token())))
     conn.commit()
     conn.close()
-    
+
+    response = make_response(redirect('/signin'))
     # Deleta todos os cookies (precisa passar o path correto)
     cookies = request.cookies
     for cookie_name in cookies:
@@ -210,6 +218,7 @@ def registrar_acao():
     usuario = jwt_util.get_username(obter_token())
     estado = data.get('estado')
     diario = data.get('diario')
+    complemento = data.get('complemento')
     status = "L"
 
     result_holder = {}
@@ -227,8 +236,8 @@ def registrar_acao():
     # Verifica se já existe um registro ativo para o mesmo usuário, estado e diário
     cursor.execute('''
         SELECT username FROM log_actions 
-        WHERE estado = %s AND diario = %s AND status = 'L'
-    ''', (estado, diario))
+        WHERE estado = %s AND diario = %s AND complemento = %s AND status = 'L'
+    ''', (estado, diario,complemento))
 
     existing_action = cursor.fetchone()
 
@@ -251,16 +260,28 @@ def registrar_acao():
     cursor.execute('''SELECT ID_auth from auth where username = %s''', (usuario,))
     user = cursor.fetchone()
     
+    if jwt_util.get_role(obter_token()) != "ADM":
+        cursor.execute('''SELECT ID_log from log_actions where ID_auth = %s and status = 'L' ''', (user[0],))
+        existing_more_action = cursor.fetchall()
+        if len(existing_more_action) >= 2:
+            return jsonify({
+                "error": f"Você só pode ler 2 jornais por vez!",
+                "codigo": 409,
+                "status": "Atenção"
+            }), 409
+
+
     cursor.execute('''
-        INSERT INTO log_actions (ID_auth,username,estado, diario, status)
-        VALUES (%s,%s, %s, %s, %s)
-    ''', (user[0],usuario, estado, diario, status))
+        INSERT INTO log_actions (ID_auth,username,estado, diario,complemento ,status)
+        VALUES (%s,%s, %s, %s,%s ,%s)
+    ''', (user[0],usuario, estado, diario,complemento ,status))
     conn.commit()
     conn.close()
 
     return jsonify({"message": "Ação registrada com sucesso!"}), 200
 
 @main_bp.route('/api/actions/stream', methods=['GET'])
+@token_required
 def stream_actions():
     def event_stream():
         last_update = None
@@ -302,38 +323,50 @@ def stream_actions():
     
 
 @main_bp.route('/api/actions/stream_listar')
+@token_required
 def stream_listar():
-    def event_stream():
-        last_update = None
-        while True:
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor(dictionary=True)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-                cursor.execute("SELECT MAX(last_update) as last_update FROM log_updates")
-                result = cursor.fetchone()
-                new_update = result['last_update']
+        # Obtém a última atualização
+        cursor.execute("SELECT MAX(last_update) as last_update FROM log_updates")
+        result = cursor.fetchone()
+        last_update = result['last_update']
 
-                if new_update and new_update != last_update:
-                    last_update = new_update
+        # Parâmetros de paginação
+        page = request.args.get('page', 1, type=int)  # Página atual (padrão: 1)
+        per_page = request.args.get('per_page', 10, type=int)  # Registros por página (padrão: 10)
+        offset = (page - 1) * per_page  # Calcula o offset
 
-                    cursor.execute("SELECT * FROM log_actions ORDER BY ID_log DESC")
-                    acoes = cursor.fetchall()
+        # Conta o total de registros para calcular a paginação
+        cursor.execute("SELECT COUNT(*) as total FROM log_actions")
+        total_records = cursor.fetchone()['total']
+        total_pages = (total_records + per_page - 1) // per_page  # Calcula total de páginas
 
-                    for registro in acoes:
-                        registro['inicio'] = formatar_data(registro['inicio'])
-                        registro['fim'] = formatar_data(registro['fim'])    
+        # Busca registros paginados
+        cursor.execute("SELECT * FROM log_actions ORDER BY ID_log DESC LIMIT %s OFFSET %s", (per_page, offset))
+        acoes = cursor.fetchall()
 
-                    yield f"data: {json.dumps(acoes)}\n\n"
+        # Formata os dados antes de enviar
+        for registro in acoes:
+            registro['inicio'] = formatar_data(registro['inicio'])
+            registro['fim'] = formatar_data(registro['fim'])
 
-                conn.close()
-                sleep(2)  # Aguarda 2 segundos antes de verificar novamente
+        conn.close()
 
-            except Exception as e:
-                print(f"Erro no SSE: {e}")
-                sleep(2)
-    threading.Thread(target=event_stream, daemon=True).start()
-    return Response(event_stream(), content_type="text/event-stream")
+        # Retorna os dados paginados
+        return jsonify({
+            "current_page": page,
+            "per_page": per_page,
+            "total_pages": total_pages,
+            "total_records": total_records,
+            "data": acoes
+        })
+
+    except Exception as e:
+        print(f"Erro ao buscar ações: {e}")
+        return jsonify({"error": "Erro ao buscar dados"}), 500
 
 @main_bp.route('/api/actions/finalizar/<int:id>', methods=['PUT'])
 @token_required
@@ -384,7 +417,7 @@ def get_user_actions():
 
     # Consulta para pegar as ações do usuário que estão com status "L"
     cursor.execute('''
-        SELECT ID_log, estado, diario
+        SELECT ID_log, estado, diario, complemento
         FROM log_actions
         WHERE username = %s AND status = 'L'
     ''', (username,))
@@ -397,7 +430,8 @@ def get_user_actions():
         {
             'ID_log': action[0],
             'estado': action[1],
-            'diario': action[2]
+            'diario': action[2],
+            'complemento': action[3]
         }
         for action in actions
     ]
@@ -421,6 +455,7 @@ def api_users():
                 u.username, 
                 u.ID_auth,
                 MAX(u.last_login) AS last_login,
+                MAX(u.last_logout) AS last_logout,
                 u.status_logado,
                 (
                     SELECT la.estado
@@ -463,7 +498,8 @@ def api_users():
             {
                 "username": usuario["username"],
                 "ID_auth": usuario["ID_auth"],
-                "last_login": formatar_data(usuario["last_login"]),  # Formata a data
+                "last_login": formatar_data(usuario["last_login"]),  
+                "last_logout":formatar_data(usuario["last_logout"]),
                 "status_logado": usuario["status_logado"],
                 "ultima_acao": {
                     "estado": usuario["ultima_acao_estado"],
@@ -483,31 +519,48 @@ def api_users():
         conn.close()
         return jsonify({"error": str(e)}), 500
     
-@main_bp.route('/api/salvar_inatividade', methods = ['POST'])
+@main_bp.route('/api/salvar_inatividade', methods=['POST'])
 @token_required
 def salvar_inatividade():
-        data = request.get_json()
-        tempo_inatividade = data.get('tempo_inatividade')
-        user = jwt_util.get_username(obter_token())
+    data = request.get_json()
+    tempo_inatividade = data.get('tempo_inatividade')
+    user = jwt_util.get_username(obter_token())
 
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        try:
-            cursor.execute('''SELECT ID_auth from auth where username = %s''', (user,))
-            user_id = cursor.fetchone()
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
 
-            cursor.execute('''SELECT ID_log from log_actions where username = %s and status=L''', (user,))
-            id_log = cursor.fetchone()
+    try:
+        # Buscar ID_auth do usuário
+        cursor.execute('SELECT ID_auth FROM auth WHERE username = %s', (user,))
+        user_id = cursor.fetchone()
 
-            cursor.execute("INSERT INTO auth_inatividade (ID_auth,ID_log,username, tempo_inatividade) VALUES (%s,%s,%s, %s)", 
-                        (user_id['ID_auth'],id_log['ID_log'],user, tempo_inatividade))
-            conn.commit()
-            conn.close()
+        if not user_id:
+            return jsonify({"error": "Usuário não encontrado"}), 404
 
-            return jsonify({"message": "Tempo de inatividade salvo com sucesso"}), 200
+        # Buscar todos os ID_log associados ao usuário com status "L"
+        cursor.execute('SELECT ID_log FROM log_actions WHERE ID_auth = %s AND status= "L"', (user_id['ID_auth'],))
+        logs = cursor.fetchall()  # Obtém todos os registros
 
-        except Exception as e:
-            return jsonify({"erro ao salvar inatividade": str(e)}), 500
+        if not logs:
+            logs = [{"ID_log": None}]
+
+        # Inserir múltiplos registros para cada ID_log encontrado
+        for log in logs:
+            cursor.execute(
+                "INSERT INTO auth_inatividade (ID_auth, ID_log, username, tempo_inatividade, data) VALUES (%s, %s, %s, %s,%s)",
+                (user_id['ID_auth'], log['ID_log'], user, tempo_inatividade,datetime.now())
+            )
+
+        conn.commit()
+
+        return jsonify({"message": f"Tempo de inatividade salvo para {len(logs)} registros"}), 200
+
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
         
 @main_bp.route('/api/users/<int:id>/history', methods=["GET"])
 @token_required
@@ -529,15 +582,19 @@ def get_user_history(id):
                 la.estado,
                 la.diario,
                 la.status,
+                la.complemento,
                 (
                     SELECT ai.tempo_inatividade
                     FROM auth_inatividade ai
-                    WHERE la.ID_auth = ai.ID_auth
+                    WHERE la.ID_auth = ai.ID_auth 
+                    AND la.ID_log = ai.ID_log 
+                    ORDER BY ai.ID_inatividade DESC 
                     LIMIT 1
-                ) AS tempo_inativo 
+                ) AS tempo_inativo,
+                la.tempo_decorrido
             FROM log_actions la
             WHERE la.ID_auth = %s
-            ORDER BY la.inicio DESC
+            ORDER BY la.inicio DESC;
         ''', (id,))
 
         history_data = cursor.fetchall()
@@ -546,8 +603,12 @@ def get_user_history(id):
         history_formatted = [
             {
                 "timestamp": formatar_data(entry["inicio"]),
-                "acao": f'{entry["estado"]} - {entry["diario"]}',
-                "tempo_inativo": entry["tempo_inativo"] or "N/A"
+                "estado": f'{entry["estado"]}',
+                "diario":f'{entry["diario"]}',
+                "status":f'{entry["status"]}',
+                "tempo_decorrido":f'{entry["tempo_decorrido"]}',
+                "tempo_inativo": entry["tempo_inativo"] or "N/A",
+                "complemento":entry["complemento"]
             }
             for entry in history_data
         ]
@@ -559,3 +620,136 @@ def get_user_history(id):
     except Exception as e:
         conn.close()
         return jsonify({"error": str(e)}), 500
+
+
+@main_bp.route('/api/search', methods=['GET'])
+@token_required
+def search():
+    # Verifica se o usuário tem permissão para acessar o histórico
+    if jwt_util.get_role(obter_token()) != "ADM":
+        return jsonify({"error": "Acesso negado!"}), 403
+
+    funcionario = request.args.get('FUNC')  # Nome do usuário buscado
+    data_inicio = request.args.get('DATA_INICIO')  # Data de início do filtro
+    data_fim = request.args.get('DATA_FIM')  # Data de fim do filtro
+    pagina = int(request.args.get('pagina', 1))  # Página de resultados (default 1)
+    itens_por_pagina = int(request.args.get('itens_por_pagina', 10))  # Itens por página (default 10)
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Busca o ID do usuário pelo nome
+        cursor.execute('SELECT ID_auth, username, last_login, last_logout FROM auth WHERE username = %s', (funcionario,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({"error": "Usuário não encontrado!"}), 404
+
+        user["last_login"] = formatar_data(user["last_login"])
+        user["last_logout"] = formatar_data(user["last_logout"])
+        user_id = user["ID_auth"]
+
+        query_inatividade_semLeitura = 'SELECT SUM(tempo_inatividade) as tempo_inatividade FROM auth_inatividade WHERE ID_auth = %s AND ID_log IS null'
+        params_inatividade_semLeitura = [user_id]
+
+        query_inatividade_total = 'SELECT SUM(tempo_inatividade) as tempo_inatividade FROM auth_inatividade WHERE ID_auth = %s'
+        params_inatividade_total = [user_id]
+
+        query_logs_count = '''SELECT COUNT(*) FROM log_actions la WHERE la.ID_auth = %s'''
+        params_logs_count = [user_id]
+
+        query_logs = '''SELECT 
+                            la.ID_log,
+                            la.estado,
+                            la.diario,
+                            la.complemento,
+                            la.status,
+                            la.inicio,
+                            la.fim,
+                            la.tempo_decorrido
+                        FROM log_actions la
+                        WHERE la.ID_auth = %s'''
+        params_logs = [user_id]
+
+        if data_inicio and data_fim:
+            query_inatividade_semLeitura += ' AND DATE(data) BETWEEN %s AND %s'
+            query_inatividade_total += ' AND DATE(data) BETWEEN %s AND %s'
+            query_logs += ' AND DATE(la.inicio) BETWEEN %s AND %s'
+            params_inatividade_semLeitura.extend([data_inicio, data_fim])
+            params_inatividade_total.extend([data_inicio, data_fim])
+            params_logs_count.extend([data_inicio, data_fim])
+            params_logs.extend([data_inicio, data_fim])
+
+        # Adicionando paginação à consulta de logs
+        query_logs += ' ORDER BY la.inicio DESC LIMIT %s OFFSET %s;'
+        params_logs.extend([itens_por_pagina, (pagina - 1) * itens_por_pagina])
+
+        cursor.execute(query_inatividade_semLeitura, tuple(params_inatividade_semLeitura))
+        inatividade_semLeitura = cursor.fetchone()
+
+        cursor.execute(query_inatividade_total, tuple(params_inatividade_total))
+        total_inatividade = cursor.fetchone()
+
+        # Contagem total de logs
+        cursor.execute(query_logs_count, tuple(params_logs_count))
+        total_logs = cursor.fetchone()['COUNT(*)']
+
+        # Calcular o total de páginas
+        total_pages = (total_logs // itens_por_pagina) + (1 if total_logs % itens_por_pagina > 0 else 0)
+
+        cursor.execute(query_logs, tuple(params_logs))
+        logs = cursor.fetchall()
+
+        response_data = {
+            "ID_auth": user["ID_auth"],
+            "username": user["username"],
+            "last_login": user["last_login"],
+            "last_logout": user["last_logout"],
+            "tempo_sem_leitura": inatividade_semLeitura,
+            "tempo_total_inativo": total_inatividade,
+            "logs": [],
+            "total_logs": total_logs,
+            "total_pages": total_pages,
+            "current_page": pagina
+        }
+
+        for log in logs:
+            log["inicio"] = formatar_data(log["inicio"])
+            log["fim"] = formatar_data(log["fim"])
+
+            query_inatividade = 'SELECT SUM(tempo_inatividade) AS tempo_inatividade, data FROM auth_inatividade WHERE ID_auth = %s AND id_log = %s GROUP BY data'
+            params_inatividade = [user_id, log["ID_log"]]
+
+            if data_inicio and data_fim:
+                query_inatividade += ' HAVING DATE(data) BETWEEN %s AND %s'
+                params_inatividade.extend([data_inicio, data_fim])
+
+            cursor.execute(query_inatividade, tuple(params_inatividade))
+            inatividade = cursor.fetchall()
+
+            for registro in inatividade:
+                registro['data'] = formatar_data(registro['data'])
+            
+            log_data = {
+                "ID_log": log["ID_log"],
+                "estado": log["estado"],
+                "diario": log["diario"],
+                "complemento": log["complemento"],
+                "status": log["status"],
+                "inicio": log["inicio"],
+                "fim": log["fim"],
+                "tempo_decorrido": log["tempo_decorrido"],
+                "inatividade": inatividade  # Lista de períodos de inatividade
+            }
+
+            response_data["logs"].append(log_data)
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()

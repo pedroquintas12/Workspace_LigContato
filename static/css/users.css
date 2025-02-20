@@ -239,3 +239,37 @@ tr:hover {
     .sidebar.collapsed + #Container-Primario {
         margin-left: 60px; /* Deve ser igual à largura colapsada da sidebar */
     }
+
+        /* Estiliza o checkbox para um design mais moderno */
+        .form-check-input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+    
+        /* Muda a cor quando marcado */
+        .form-check-input:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+    
+        /* Melhora o espaçamento e alinhamento */
+        .form-check-label {
+            margin-left: 5px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    
+            /* Centralizar o checkbox */
+        td:nth-child(4) {
+            text-align: center;
+            vertical-align: middle;
+        }
+    
+        /* Ajustar o tamanho do checkbox */
+        td:nth-child(4) input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+    
