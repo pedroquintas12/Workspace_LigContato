@@ -87,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function showUserHistory(username, historyData) {
     // Cria o cabeçalho da tabela
     let historyHtml = `
+        <p style="font-size: 14px; font-style: italic; color: gray;">(Exibindo os últimos 10 registros)</p>
         <table class="table table-bordered table-striped">
             <thead>
                 <tr>

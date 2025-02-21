@@ -594,7 +594,7 @@ def get_user_history(id):
                 la.tempo_decorrido
             FROM log_actions la
             WHERE la.ID_auth = %s
-            ORDER BY la.inicio DESC;
+            ORDER BY la.inicio DESC LIMIT 10;
         ''', (id,))
 
         history_data = cursor.fetchall()
