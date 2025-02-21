@@ -301,7 +301,7 @@ def stream_actions():
                     last_update = new_update
 
                     # Busca os registros de log_actions do dia atual
-                    cursor.execute("SELECT * FROM log_actions WHERE DATE(inicio) = %s ORDER BY ID_log DESC", (today,))
+                    cursor.execute("SELECT * FROM log_actions WHERE DATE(inicio) = %s ORDER BY status DESC", (today,))
                     acoes = cursor.fetchall()
 
                     for registro in acoes:
@@ -345,7 +345,7 @@ def stream_listar():
         total_pages = (total_records + per_page - 1) // per_page  # Calcula total de páginas
 
         # Busca registros paginados
-        cursor.execute("SELECT * FROM log_actions ORDER BY ID_log DESC LIMIT %s OFFSET %s", (per_page, offset))
+        cursor.execute("SELECT * FROM log_actions ORDER BY status DESC LIMIT %s OFFSET %s", (per_page, offset))
         acoes = cursor.fetchall()
 
         # Formata os dados antes de enviar
