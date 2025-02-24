@@ -36,9 +36,7 @@ def users():
     
     return render_template("users.html" , username = jwt_util.get_username(obter_token()), role = jwt_util.get_role(obter_token()))
 
-
-
-# Pagina do ADMIN
+# Pagina de relatorio
 @front_bp.route('/relatorio')
 @token_required
 def relatorio():

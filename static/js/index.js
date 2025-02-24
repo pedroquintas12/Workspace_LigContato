@@ -37,11 +37,13 @@ function getStatusBadge(status) {
         const estado = Array.from(document.getElementById('estados').selectedOptions).map(option => option.value);
         const diario = Array.from(document.getElementById('diarios').selectedOptions).map(option => option.value);
         const complementoMarcado = document.getElementById('complementoCheckbox').checked; 
+        const DataPublicacao = document.getElementById('dataComplemento').value;
 
         const data = {
             estado: estado.join(','), 
             diario: diario.join(','),
-            complemento : complementoMarcado
+            complemento : complementoMarcado,
+            data_publicacao: DataPublicacao
         };
 
         try {
@@ -185,6 +187,7 @@ function getStatusBadge(status) {
                             <td>${action.estado}</td>
                             <td>${action.diario}</td>
                             <td>${complementoCheckbox}</td>
+                            <td>${action.data_publicacao}</td>
                             <td>${getStatusBadge(action.status)}</td>
                         </tr>
                     `;

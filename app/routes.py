@@ -6,7 +6,7 @@ import threading
 from config.db_connection import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required, obter_token
-from app.utils.date_utils import formatar_data
+from app.utils.date_utils import formartar_data_AMD, formatar_data
 from time import sleep 
 from config.logger_config import logger
 
@@ -216,46 +216,49 @@ def get_diarios():
 def registrar_acao():
     data = request.json
     usuario = jwt_util.get_username(obter_token())
-    estado = data.get('estado')
-    diario = data.get('diario')
+    estados = data.get('estado', '')
+    diarios = data.get('diario', '')
     complemento = data.get('complemento')
+    data_publicacao = data.get('data_publicacao')
     status = "L"
 
     result_holder = {}
 
-    if not estado and not diario:
+    if not estados or not diarios or not data_publicacao:
         result_holder["result"] = {
-            "error": "Obrigatorio todos os campos.",
+            "error": "Obrigatório todos os campos.",
             "codigo": 404,
-            "status": "Falha ao registrar estado e diario"
+            "status": "Falha ao registrar estado e diário"
         }
         return jsonify(result_holder["result"]), 404
 
+    estados_lista = estados.split(',')
+    diarios_lista = diarios.split(',')
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    # Verifica se já existe um registro ativo para o mesmo usuário, estado e diário
-    cursor.execute('''
-        SELECT username FROM log_actions 
-        WHERE estado = %s AND diario = %s AND complemento = %s AND status = 'L'
-    ''', (estado, diario,complemento))
 
-    existing_action = cursor.fetchone()
-
-    if existing_action:
-        conn.close()
-
-        if usuario == existing_action[0]:
-            return jsonify({
-            "error": f"Você está lendo esse diario",
-            "codigo": 409,  # Código 409 indica conflito
-            "status": "Duplicidade detectada"
-        }), 409
-
-        return jsonify({
-            "error": f"{existing_action[0]} está lendo esse diario",
-            "codigo": 409,  # Código 409 indica conflito
-            "status": "Duplicidade detectada"
-        }), 409
+    for estado in estados_lista:
+        for diario in diarios_lista:
+            cursor.execute('''
+                SELECT username FROM log_actions 
+                WHERE estado = %s AND diario = %s AND complemento = %s AND status = 'L'
+            ''', (estado.strip(), diario.strip(), complemento))
+            
+            existing_action = cursor.fetchone()
+            if existing_action:
+                conn.close()
+                if usuario == existing_action[0]:
+                    return jsonify({
+                        "error": f"Você está lendo esse diário",
+                        "codigo": 409,
+                        "status": "Duplicidade detectada"
+                    }), 409
+                return jsonify({
+                    "error": f"{existing_action[0]} está lendo esse diário",
+                    "codigo": 409,
+                    "status": "Duplicidade detectada"
+                }), 409
 
     cursor.execute('''SELECT ID_auth from auth where username = %s''', (usuario,))
     user = cursor.fetchone()
@@ -264,17 +267,20 @@ def registrar_acao():
         cursor.execute('''SELECT ID_log from log_actions where ID_auth = %s and status = 'L' ''', (user[0],))
         existing_more_action = cursor.fetchall()
         if len(existing_more_action) >= 2:
+            conn.close()
             return jsonify({
                 "error": f"Você só pode ler 2 jornais por vez!",
                 "codigo": 409,
                 "status": "Atenção"
             }), 409
-
-
-    cursor.execute('''
-        INSERT INTO log_actions (ID_auth,username,estado, diario,complemento ,status)
-        VALUES (%s,%s, %s, %s,%s ,%s)
-    ''', (user[0],usuario, estado, diario,complemento ,status))
+    
+    for estado in estados_lista:
+        for diario in diarios_lista:
+            cursor.execute('''
+                INSERT INTO log_actions (ID_auth,username,estado, diario,complemento ,data_publicacao,status)
+                VALUES (%s,%s, %s, %s,%s ,%s,%s)
+            ''', (user[0], usuario, estado.strip(), diario.strip(), complemento,data_publicacao ,status))
+    
     conn.commit()
     conn.close()
 
@@ -306,7 +312,8 @@ def stream_actions():
 
                     for registro in acoes:
                         registro['inicio'] = formatar_data(registro['inicio'])
-                        registro['fim'] = formatar_data(registro['fim'])  
+                        registro['fim'] = formatar_data(registro['fim'])
+                        registro['data_publicacao'] = formartar_data_AMD(registro['data_publicacao'])  
 
                     # Envia os dados via SSE
                     yield f"data: {json.dumps(acoes)}\n\n"
