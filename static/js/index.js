@@ -34,16 +34,16 @@ function getStatusBadge(status) {
     }
 
     async function adicionar() {
-        const estado = Array.from(document.getElementById('estados').selectedOptions).map(option => option.value);
-        const diario = Array.from(document.getElementById('diarios').selectedOptions).map(option => option.value);
-        const complementoMarcado = document.getElementById('complementoCheckbox').checked; 
-        const DataPublicacao = document.getElementById('dataComplemento').value;
-
+        const estadosSelecionados = document.getElementById('estados').value;
+        const diariosSelecionados = Array.from(document.getElementById('diarios').selectedOptions).map(option => option.value);
+        const complementoMarcado = document.getElementById('complementoCheckbox').checked;
+        const dataPublicacao = document.getElementById('dataComplemento').value;
+    
         const data = {
-            estado: estado.join(','), 
-            diario: diario.join(','),
-            complemento : complementoMarcado,
-            data_publicacao: DataPublicacao
+            estado : estadosSelecionados,
+            diarios : diariosSelecionados,  // Agora vai enviar um objeto com os estados e diários agrupados
+            complemento: complementoMarcado,
+            data_publicacao: dataPublicacao
         };
 
         try {
@@ -54,9 +54,9 @@ function getStatusBadge(status) {
                 },
                 body: JSON.stringify(data)
             });
-
+    
             const result = await response.json();
-
+    
             if (response.ok) {
                 Swal.fire({
                     icon: 'success',
@@ -78,7 +78,7 @@ function getStatusBadge(status) {
             }
         } catch (err) {
             console.error('Erro ao enviar os dados:', err);
-
+    
             Swal.fire({
                 icon: 'error',
                 title: 'Erro!',
@@ -86,6 +86,7 @@ function getStatusBadge(status) {
             });
         }
     }
+    
 
     async function finalizarAcao(id) {
         try {

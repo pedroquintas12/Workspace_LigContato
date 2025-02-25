@@ -6,7 +6,7 @@ import threading
 from config.db_connection import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required, obter_token
-from app.utils.date_utils import formartar_data_AMD, formatar_data
+from app.utils.date_utils import formatar_data,formartar_data_AMD
 from time import sleep 
 from config.logger_config import logger
 
@@ -216,71 +216,89 @@ def get_diarios():
 def registrar_acao():
     data = request.json
     usuario = jwt_util.get_username(obter_token())
-    estados = data.get('estado', '')
-    diarios = data.get('diario', '')
+    estado = data.get('estado')  # Apenas um estado
+    diarios = data.get('diarios')  # Já é uma lista
     complemento = data.get('complemento')
     data_publicacao = data.get('data_publicacao')
     status = "L"
 
-    result_holder = {}
-
-    if not estados or not diarios or not data_publicacao:
-        result_holder["result"] = {
-            "error": "Obrigatório todos os campos.",
+    if not estado or not diarios or not data_publicacao:
+        return jsonify({
+            "error": "Obrigatório informar estado, diários e data de publicação.",
             "codigo": 404,
-            "status": "Falha ao registrar estado e diário"
-        }
-        return jsonify(result_holder["result"]), 404
+            "status": "Falha ao registrar estado e diários"
+        }), 404
 
-    estados_lista = estados.split(',')
-    diarios_lista = diarios.split(',')
+    # Garantir que 'diarios' seja uma lista válida
+    if not isinstance(diarios, list):
+        return jsonify({
+            "error": "O campo 'diario' deve ser uma lista.",
+            "codigo": 400,
+            "status": "Formato inválido"
+        }), 400
 
+    # Conexão com o banco
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    for estado in estados_lista:
-        for diario in diarios_lista:
-            cursor.execute('''
-                SELECT username FROM log_actions 
-                WHERE estado = %s AND diario = %s AND complemento = %s AND status = 'L'
-            ''', (estado.strip(), diario.strip(), complemento))
-            
-            existing_action = cursor.fetchone()
-            if existing_action:
-                conn.close()
-                if usuario == existing_action[0]:
-                    return jsonify({
-                        "error": f"Você está lendo esse diário",
-                        "codigo": 409,
-                        "status": "Duplicidade detectada"
-                    }), 409
+    # Buscar ID do usuário
+    cursor.execute("SELECT ID_auth FROM auth WHERE username = %s", (usuario,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        return jsonify({
+            "error": "Usuário não encontrado.",
+            "codigo": 401,
+            "status": "Falha na autenticação"
+        }), 401
+
+    user_id = user[0]
+
+    # Verificar se o usuário já está lendo dois diários (se não for ADM)
+    if jwt_util.get_role(obter_token()) != "ADM":
+        cursor.execute("SELECT COUNT(DISTINCT estado) FROM log_actions WHERE ID_auth = %s AND status = 'L';", (user_id,))
+        active_count = cursor.fetchone()[0]
+
+        if active_count >= 2:
+            conn.close()
+            return jsonify({
+                "error": "Você só pode ler 2 estados por vez!",
+                "codigo": 409,
+                "status": "Atenção"
+            }), 409
+
+    # Verificar se já existe um registro ativo para o mesmo estado e algum dos diários
+    for diario in diarios:
+        cursor.execute("""
+            SELECT username FROM log_actions 
+            WHERE estado = %s AND diario = %s AND complemento = %s AND status = 'L'
+        """, (estado, diario, complemento))
+
+        existing_action = cursor.fetchone()
+        if existing_action:
+            conn.close()
+
+            if usuario == existing_action[0]:
                 return jsonify({
-                    "error": f"{existing_action[0]} está lendo esse diário",
+                    "error": "Você já está lendo esse diário.",
                     "codigo": 409,
                     "status": "Duplicidade detectada"
                 }), 409
 
-    cursor.execute('''SELECT ID_auth from auth where username = %s''', (usuario,))
-    user = cursor.fetchone()
-    
-    if jwt_util.get_role(obter_token()) != "ADM":
-        cursor.execute('''SELECT ID_log from log_actions where ID_auth = %s and status = 'L' ''', (user[0],))
-        existing_more_action = cursor.fetchall()
-        if len(existing_more_action) >= 2:
-            conn.close()
             return jsonify({
-                "error": f"Você só pode ler 2 jornais por vez!",
+                "error": f"{existing_action[0]} está lendo esse diário.",
                 "codigo": 409,
-                "status": "Atenção"
+                "status": "Duplicidade detectada"
             }), 409
-    
-    for estado in estados_lista:
-        for diario in diarios_lista:
-            cursor.execute('''
-                INSERT INTO log_actions (ID_auth,username,estado, diario,complemento ,data_publicacao,status)
-                VALUES (%s,%s, %s, %s,%s ,%s,%s)
-            ''', (user[0], usuario, estado.strip(), diario.strip(), complemento,data_publicacao ,status))
-    
+
+    # Inserir registros no banco para cada diário
+    for diario in diarios:
+        cursor.execute("""
+            INSERT INTO log_actions (ID_auth, username, estado, diario, complemento, data_publicacao, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, usuario, estado, diario, complemento, data_publicacao, status))
+
     conn.commit()
     conn.close()
 
@@ -312,8 +330,9 @@ def stream_actions():
 
                     for registro in acoes:
                         registro['inicio'] = formatar_data(registro['inicio'])
-                        registro['fim'] = formatar_data(registro['fim'])
-                        registro['data_publicacao'] = formartar_data_AMD(registro['data_publicacao'])  
+                        registro['fim'] = formatar_data(registro['fim'])  
+                        registro['data_publicacao'] = formartar_data_AMD(registro['data_publicacao'])
+
 
                     # Envia os dados via SSE
                     yield f"data: {json.dumps(acoes)}\n\n"
@@ -352,7 +371,21 @@ def stream_listar():
         total_pages = (total_records + per_page - 1) // per_page  # Calcula total de páginas
 
         # Busca registros paginados
-        cursor.execute("SELECT * FROM log_actions ORDER BY status DESC LIMIT %s OFFSET %s", (per_page, offset))
+        cursor.execute("""SELECT 
+                            GROUP_CONCAT(DISTINCT ID_log ORDER BY ID_log SEPARATOR ', ') AS ID_log,
+                            username, 
+                            estado, 
+                            GROUP_CONCAT(DISTINCT diario ORDER BY diario SEPARATOR ', ') AS diario,
+                            complemento, 
+                            status, 
+                            inicio, 
+                            fim, 
+                            tempo_decorrido  
+                        FROM log_actions
+                        GROUP BY username, estado, complemento, status, inicio, fim, tempo_decorrido
+                        ORDER BY status DESC, inicio DESC
+                        LIMIT %s OFFSET %s;
+                       """, (per_page, offset))
         acoes = cursor.fetchall()
 
         # Formata os dados antes de enviar
@@ -683,10 +716,13 @@ def search():
             query_inatividade_semLeitura += ' AND DATE(data) BETWEEN %s AND %s'
             query_inatividade_total += ' AND DATE(data) BETWEEN %s AND %s'
             query_logs += ' AND DATE(la.inicio) BETWEEN %s AND %s'
+            query_logs_count += ' AND DATE(la.inicio) BETWEEN %s AND %s'  # ✅ Adicionando corretamente
+
             params_inatividade_semLeitura.extend([data_inicio, data_fim])
             params_inatividade_total.extend([data_inicio, data_fim])
             params_logs_count.extend([data_inicio, data_fim])
             params_logs.extend([data_inicio, data_fim])
+
 
         # Adicionando paginação à consulta de logs
         query_logs += ' ORDER BY la.inicio DESC LIMIT %s OFFSET %s;'
