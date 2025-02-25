@@ -105,7 +105,7 @@ function showUserHistory(username, historyData) {
 
     // Se não houver dados, exibe mensagem de "Sem histórico"
     if (historyData.length === 0) {
-        historyHtml += "<tr><td colspan='5'>Sem histórico disponível.</td></tr>";
+        historyHtml += "<tr><td colspan='7'>Sem histórico disponível.</td></tr>";
     } else {
         // Adiciona as entradas do histórico na tabela
         historyData.forEach(entry => {

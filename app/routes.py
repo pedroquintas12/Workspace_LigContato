@@ -268,6 +268,28 @@ def registrar_acao():
                 "status": "Atenção"
             }), 409
 
+    cursor.execute("""
+        SELECT username FROM log_actions 
+        WHERE estado = %s AND status = 'L'
+    """, (estado,))
+
+    existing_state = cursor.fetchone()
+    if existing_state:
+        conn.close()
+
+        if usuario == existing_state[0]:
+            return jsonify({
+                "error": "Você já está lendo esse estado.",
+                "codigo": 409,
+                "status": "Duplicidade detectada"
+            }), 409
+
+        return jsonify({
+            "error": f"{existing_state[0]} está lendo esse estado.",
+            "codigo": 409,
+            "status": "Duplicidade detectada"
+        }), 409
+        
     # Verificar se já existe um registro ativo para o mesmo estado e algum dos diários
     for diario in diarios:
         cursor.execute("""
@@ -716,7 +738,7 @@ def search():
             query_inatividade_semLeitura += ' AND DATE(data) BETWEEN %s AND %s'
             query_inatividade_total += ' AND DATE(data) BETWEEN %s AND %s'
             query_logs += ' AND DATE(la.inicio) BETWEEN %s AND %s'
-            query_logs_count += ' AND DATE(la.inicio) BETWEEN %s AND %s'  # ✅ Adicionando corretamente
+            query_logs_count += ' AND DATE(la.inicio) BETWEEN %s AND %s' 
 
             params_inatividade_semLeitura.extend([data_inicio, data_fim])
             params_inatividade_total.extend([data_inicio, data_fim])
