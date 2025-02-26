@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
@@ -81,18 +82,25 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = obter_token()
-
         if not token:
-                response = make_response(redirect('/logout'))
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"error": "Token não encontrado. Faça login novamente."}), 401
+            return redirect('/logout?error=Token não encontrado. Faça login novamente.')
 
         try:
             jwt_util = JWTUtil()
             if not jwt_util.token_valido(token):
-                response = make_response(redirect('/logout'))
-
-                return response
-        except Exception as e:
-            return jsonify({"message": f"Erro ao validar token: {str(e)}"}), 401
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return jsonify({"error": "Sessão expirada! Faça login novamente."}), 401
+                return redirect('/logout?error=Sessão expirada! Faça login novamente.')
+        except jwt.ExpiredSignatureError:
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"error": "Seu token expirou! Faça login novamente."}), 401
+            return redirect('/logout?error=Seu token expirou! Faça login novamente.')
+        except jwt.InvalidTokenError:
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"error": "Token inválido! Faça login novamente."}), 401
+            return redirect('/logout?error=Token inválido! Faça login novamente.')
 
         return f(*args, **kwargs)
 

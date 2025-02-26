@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './auth.js';
+
 function getStatusBadge(status) {
     if (status === "L") return '<span class="badge bg-warning text-dark">LENDO-VSAP</span>';
     if (status === "F") return '<span class="badge bg-success">FINALIZADO</span>';
@@ -31,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Exibir o carregamento
     loadingSpinner.classList.remove("d-none");
 
-    fetch("/api/users", {
+    fetchWithAuth("/api/users", {
         method: "GET",
         headers: {
             'Content-Type': 'application/json',

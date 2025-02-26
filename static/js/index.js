@@ -1,4 +1,4 @@
-
+import { fetchWithAuth } from './auth.js';
 
 function getStatusBadge(status) {
     if (status === "L") return '<span class="badge bg-warning text-dark">LENDO-VSAP</span>';
@@ -6,14 +6,15 @@ function getStatusBadge(status) {
     if (status === "Em andamento") return '<span class="badge bg-info text-dark">EM ANDAMENTO</span>';
     return status;
 }
-    async function atualizarDiarios() {
-        const estadosSelecionados = Array.from(document.getElementById('estados').selectedOptions)
+
+window.atualizarDiarios = async function() {
+    const estadosSelecionados = Array.from(document.getElementById('estados').selectedOptions)
             .map(option => option.value)
             .join(',');
 
         if (estadosSelecionados) {
             try {
-                const response = await fetch(`/api/diarios?publicationsState=${estadosSelecionados}`);
+                const response = await fetchWithAuth(`/api/diarios?publicationsState=${estadosSelecionados}`);
                 const data = await response.json();
 
                 const diariosSelect = document.getElementById('diarios');
@@ -31,9 +32,10 @@ function getStatusBadge(status) {
                 console.error('Erro ao buscar os diários:', error);
             }
         }
-    }
+    };
 
-    async function adicionar() {
+
+    window.adicionar = async function() {
         const estadosSelecionados = document.getElementById('estados').value;
         const diariosSelecionados = Array.from(document.getElementById('diarios').selectedOptions).map(option => option.value);
         const complementoMarcado = document.getElementById('complementoCheckbox').checked;
@@ -47,7 +49,7 @@ function getStatusBadge(status) {
         };
 
         try {
-            const response = await fetch('/api/actions/registrar', {
+            const response = await fetchWithAuth('/api/actions/registrar', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -78,23 +80,16 @@ function getStatusBadge(status) {
             }
         } catch (err) {
             console.error('Erro ao enviar os dados:', err);
-    
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: 'Erro ao enviar os dados para o servidor.',
-            });
         }
     }
     
-
-    async function finalizarAcao(id) {
+    window.finalizarAcao = async function(id) {
         try {
-            const response = await fetch(`/api/actions/finalizar/${id}`, { method: 'PUT' });
-
+            const response = await fetchWithAuth(`/api/actions/finalizar/${id}`, { method: 'PUT' });
+    
             if (response.ok) {
                 const result = await response.json();
-
+    
                 Swal.fire({
                     icon: 'success',
                     title: 'Sucesso!',
@@ -105,11 +100,11 @@ function getStatusBadge(status) {
                     toast: true,
                     background: '#28a745',
                 });
-
+    
                 atualizarUserActions();
             } else {
                 const error = await response.json();
-
+    
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro ao Finalizar',
@@ -118,18 +113,11 @@ function getStatusBadge(status) {
             }
         } catch (err) {
             console.error('Erro ao finalizar a ação:', err);
-
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: 'Erro ao finalizar a ação. Tente novamente.',
-            });
         }
     }
-
     async function atualizarUserActions() {
         try {
-            const response = await fetch('/api/user/actions'); // Endpoint para obter as ações do usuário
+            const response = await fetchWithAuth('/api/user/actions'); // Endpoint para obter as ações do usuário
             const data = await response.json();
 
             const userActions = document.getElementById('user-actions');
@@ -145,12 +133,6 @@ function getStatusBadge(status) {
             `).join('');
         } catch (err) {
             console.error('Erro ao buscar as ações do usuário:', err);
-
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: 'Não foi possível carregar as ações do usuário.',
-            });
         }
     }
 
@@ -171,6 +153,7 @@ function getStatusBadge(status) {
             reiniciarTemporizadorInatividade();
             iniciarStreamStatus();
             atualizarUserActions();
+
         
             eventSource.onmessage = event => {
                 const data = JSON.parse(event.data);
@@ -242,7 +225,7 @@ function exibirMensagemInatividade() {
         allowEscapeKey: false        
     }).then(() => {
         // Calcula o tempo que levou para clicar em "OK"
-        tempoConfirmacao = (Date.now() - inatividadeMensagemStartTime) / 1000 / 60; // Em minutos
+        const tempoConfirmacao = (Date.now() - inatividadeMensagemStartTime) / 1000 / 60; // Em minutos
 
         // Verifica se o tempo foi igual ou maior que 5 minutos
         if (tempoConfirmacao >= 5) {
@@ -269,7 +252,7 @@ function reiniciarTemporizadorInatividade() {
 // Função para enviar o tempo de inatividade para o servidor
 async function salvarInatividade(totalInatividade) {
     try {
-        const response = await fetch('/api/salvar_inatividade', {
+        const response = await fetchWithAuth('/api/salvar_inatividade', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -293,4 +276,3 @@ async function salvarInatividade(totalInatividade) {
 document.addEventListener("mousemove", reiniciarTemporizadorInatividade);
 document.addEventListener("keydown", reiniciarTemporizadorInatividade);
 document.addEventListener("click", reiniciarTemporizadorInatividade);
-

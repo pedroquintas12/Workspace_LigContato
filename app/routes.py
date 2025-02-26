@@ -15,6 +15,7 @@ jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
 
 
 @main_bp.route('/register', methods=['POST'])
+@token_required
 def register():
     dataAtual = datetime.now()
     data = request.get_json()
@@ -162,32 +163,41 @@ def login():
 
 @main_bp.route('/logout')
 def logout():
-    # Atualiza a última data de login e status no banco de dados
     conn = get_db_connection()
     cursor = conn.cursor()
     data_hora_login = datetime.now()
+
+    username = jwt_util.get_username(obter_token())
+
+    if username:
+        cursor.execute('''
+            UPDATE auth 
+            SET last_logout = %s, status_logado = 'N' 
+            WHERE username = %s
+        ''', (data_hora_login, username))
+        conn.commit()
     
-    cursor.execute('''
-        UPDATE auth 
-        SET last_logout = %s, status_logado = 'N' 
-        WHERE username = %s
-    ''', (data_hora_login, jwt_util.get_username(obter_token())))
-    conn.commit()
     conn.close()
 
-    response = make_response(redirect('/signin'))
-    # Deleta todos os cookies (precisa passar o path correto)
+    # Obtém a mensagem de erro da URL (se existir)
+    error_message = request.args.get("error", "Sessão encerrada com sucesso.")
+
+    response = make_response(redirect(f'/signin?error={error_message}'))
+
+    # Deleta todos os cookies
     cookies = request.cookies
     for cookie_name in cookies:
         response.delete_cookie(cookie_name, path='/')
-    
+
     return response
+
 
 # Carregar o arquivo JSON com os diários por estado
 with open('diarios.json', 'r') as f:
     diarios_data = json.load(f)
 
 @main_bp.route('/api/diarios', methods=['GET'])
+@token_required
 def get_diarios():
     # Obtém os estados passados como uma string separada por vírgula
     estados_param = request.args.get('publicationsState')
@@ -216,8 +226,8 @@ def get_diarios():
 def registrar_acao():
     data = request.json
     usuario = jwt_util.get_username(obter_token())
-    estado = data.get('estado')  # Apenas um estado
-    diarios = data.get('diarios')  # Já é uma lista
+    estado = data.get('estado')  
+    diarios = data.get('diarios')  
     complemento = data.get('complemento')
     data_publicacao = data.get('data_publicacao')
     status = "L"

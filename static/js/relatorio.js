@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './auth.js';
+
 function getStatusBadge(status) {
     if (status === "L") return '<span class="badge bg-warning text-dark">LENDO-VSAP</span>';
     if (status === "F") return '<span class="badge bg-success">FINALIZADO</span>';
@@ -47,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Carregar lista de usuários
     try {
-        const response = await fetch('/api/users');
+        const response = await fetchWithAuth('/api/users');
         const users = await response.json();
 
         userSelect.innerHTML = '<option value="">Selecione um usuário</option>';
@@ -81,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         try {
-            const response = await fetch(url);
+            const response = await fetchWithAuth(url);
             const data = await response.json();
 
             if (data.error) {

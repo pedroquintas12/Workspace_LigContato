@@ -1,4 +1,5 @@
-let userRole = ""; // Será definido pelo backend ao carregar a página.
+import { fetchWithAuth } from './auth.js';
+
 let activeLogs = [];
 let currentPage = 1; // Página inicial
 let totalPages = 1; // Total de páginas (será atualizado pela API)
@@ -106,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // Função para buscar os dados paginados
     async function fetchLogs(page) {
         try {
-            const response = await fetch(`/api/actions/stream_listar?page=${page}&per_page=${perPage}`);
+            const response = await fetchWithAuth(`/api/actions/stream_listar?page=${page}&per_page=${perPage}`);
             const result = await response.json();
 
             if (!response.ok) {
@@ -171,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Função para bloquear o acesso
     async function bloquearAcesso() {
         try {
-            const response = await fetch('/api/bloquear_acesso', {
+            const response = await fetchWithAuth('/api/bloquear_acesso', {
                 method: 'GET',
             });
 
@@ -207,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Função para desbloquear o acesso
     async function desbloquearAcesso() {
         try {
-            const response = await fetch('/api/desbloquear_acesso', {
+            const response = await fetchWithAuth('/api/desbloquear_acesso', {
                 method: 'GET',
             });
 

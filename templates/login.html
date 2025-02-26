@@ -27,6 +27,7 @@
             </form>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.getElementById("loginForm").addEventListener("submit", function(event) {
             event.preventDefault(); // Previne o envio padrão do formulário
@@ -69,6 +70,26 @@
                 errorMessageElement.classList.remove("d-none");
             });
         });
+document.addEventListener("DOMContentLoaded", function () {
+    // Captura os parâmetros da URL
+    const params = new URLSearchParams(window.location.search);
+    const errorMessage = params.get("error");
+
+    if (errorMessage) {
+        Swal.fire({
+            title: "Atenção!",
+            text: errorMessage,
+            icon: "warning",
+            showConfirmButton: false,
+            timer: 5000,
+            position: 'top-end',
+            toast: true,
+        }).then(() => {
+            // Remove o parâmetro da URL após exibir o alerta
+            window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    }
+});
     </script>
 </body>
 </html>
