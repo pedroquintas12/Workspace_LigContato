@@ -573,7 +573,7 @@ def api_users():
                 "last_login": formatar_data(usuario["last_login"]),  
                 "last_logout":formatar_data(usuario["last_logout"]),
                 "status_logado": usuario["status_logado"],
-                "ultima_acao": {
+                "historico": {
                     "estado": usuario["ultima_acao_estado"],
                     "diario": usuario["ultima_acao_diario"],
                     "status": usuario["ultima_acao_status"],
