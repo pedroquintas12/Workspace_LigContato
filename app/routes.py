@@ -357,7 +357,7 @@ def stream_actions():
                     last_update = new_update
 
                     # Busca os registros de log_actions do dia atual
-                    cursor.execute("SELECT * FROM log_actions WHERE DATE(inicio) = %s ORDER BY status DESC", (today,))
+                    cursor.execute("SELECT * FROM log_actions WHERE DATE(inicio) = %s ORDER BY status DESC, data_publicacao DESC", (today,))
                     acoes = cursor.fetchall()
 
                     for registro in acoes:

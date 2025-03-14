@@ -176,3 +176,10 @@ h1 {
         width: 18px;
         height: 18px;
     }
+
+    #diarios-container {
+        height: 200px; /* Define a altura do contêiner */
+        overflow-y: auto; /* Habilita a rolagem vertical quando necessário */
+        border: 1px solid #ddd; /* Borda para o contêiner */
+        padding: 10px; /* Espaçamento interno */
+    }

@@ -17,171 +17,172 @@ window.atualizarDiarios = async function() {
                 const response = await fetchWithAuth(`/api/diarios?publicationsState=${estadosSelecionados}`);
                 const data = await response.json();
 
-                const diariosSelect = document.getElementById('diarios');
-                diariosSelect.innerHTML = '';
+                const diariosContainer = document.getElementById('diarios-container');
+                diariosContainer.innerHTML = '';  // Limpa os checkboxes existentes
 
+                diariosContainer.style.height = '200px';  // Defina a altura que você achar apropriada
+                diariosContainer.style.overflowY = 'auto';  // Habilita a rolagem vertical
+                
                 Object.values(data).forEach(diarios => {
                     diarios.forEach(diario => {
-                        const option = document.createElement('option');
-                        option.value = diario;
-                        option.textContent = diario;
-                        diariosSelect.appendChild(option);
+                        const checkboxDiv = document.createElement('div');
+                        checkboxDiv.classList.add('form-check');
+                        checkboxDiv.innerHTML = `
+                            <input class="form-check-input" type="checkbox" id="${diario}" value="${diario}">
+                            <label class="form-check-label" for="${diario}">${diario}</label>
+                        `;
+                        diariosContainer.appendChild(checkboxDiv);
                     });
                 });
             } catch (error) {
                 console.error('Erro ao buscar os diários:', error);
             }
         }
+};
+
+window.adicionar = async function() {
+    const estadosSelecionados = document.getElementById('estados').value;
+    const diariosSelecionados = Array.from(document.querySelectorAll('#diarios-container input[type="checkbox"]:checked'))
+        .map(checkbox => checkbox.value);
+    const complementoMarcado = document.getElementById('complementoCheckbox').checked;
+    const dataPublicacao = document.getElementById('dataComplemento').value;
+
+    const data = {
+        estado: estadosSelecionados,
+        diarios: diariosSelecionados,  // Agora vai enviar os diários selecionados com checkboxes
+        complemento: complementoMarcado,
+        data_publicacao: dataPublicacao
     };
 
-
-    window.adicionar = async function() {
-        const estadosSelecionados = document.getElementById('estados').value;
-        const diariosSelecionados = Array.from(document.getElementById('diarios').selectedOptions).map(option => option.value);
-        const complementoMarcado = document.getElementById('complementoCheckbox').checked;
-        const dataPublicacao = document.getElementById('dataComplemento').value;
-    
-        const data = {
-            estado : estadosSelecionados,
-            diarios : diariosSelecionados,  // Agora vai enviar um objeto com os estados e diários agrupados
-            complemento: complementoMarcado,
-            data_publicacao: dataPublicacao
-        };
-
-        try {
-            const response = await fetchWithAuth('/api/actions/registrar', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-    
-            const result = await response.json();
-    
-            if (response.ok) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Sucesso!',
-                    text: result.message,
-                    showConfirmButton: false,
-                    timer: 5000,
-                    position: 'top-end',
-                    toast: true,
-                    background: '#28a745',
-                });
-                atualizarUserActions();
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: result.status,
-                    text: result.error || 'Erro desconhecido.',
-                });
-            }
-        } catch (err) {
-            console.error('Erro ao enviar os dados:', err);
-        }
-    }
-    
-    window.finalizarAcao = async function(id) {
-        try {
-            const response = await fetchWithAuth(`/api/actions/finalizar/${id}`, { method: 'PUT' });
-    
-            if (response.ok) {
-                const result = await response.json();
-    
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Sucesso!',
-                    text: result.message,
-                    showConfirmButton: false,
-                    timer: 5000,
-                    position: 'top-end',
-                    toast: true,
-                    background: '#28a745',
-                });
-    
-                atualizarUserActions();
-            } else {
-                const error = await response.json();
-    
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro ao Finalizar',
-                    text: error.message || 'Erro desconhecido.',
-                });
-            }
-        } catch (err) {
-            console.error('Erro ao finalizar a ação:', err);
-        }
-    }
-    async function atualizarUserActions() {
-        try {
-            const response = await fetchWithAuth('/api/user/actions'); // Endpoint para obter as ações do usuário
-            const data = await response.json();
-
-            const userActions = document.getElementById('user-actions');
-            userActions.innerHTML = data.map(action => `
-                <div class="mb-3 p-2 border rounded">
-                    <p><strong>Estado:</strong> ${action.estado}</p>
-                    <p><strong>Diário:</strong> ${action.diario}</p>
-                    <td  style="text-align: center; vertical-align: middle;">
-                       <strong>Complemento </strong> <input class="form-check-input" type="checkbox" ${action.complemento ? "checked" : ""} disabled>
-                    </td>
-                    <button class="btn btn-sm btn-success w-100" onclick="finalizarAcao(${action.ID_log})">Finalizar</button>
-                </div>
-            `).join('');
-        } catch (err) {
-            console.error('Erro ao buscar as ações do usuário:', err);
-        }
-    }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const sidebar = document.getElementById("sidebar");
-            const mainContent = document.getElementById("main-content");
-            const toggleButton = document.getElementById("toggle-btn");
-
-            toggleButton.addEventListener("click", () => {
-                sidebar.classList.toggle("collapsed");
-                mainContent.classList.toggle("shifted");
-            });
+    try {
+        const response = await fetchWithAuth('/api/actions/registrar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
         });
 
-        document.addEventListener("DOMContentLoaded", () => {
-            const streamTableBody = document.getElementById("stream-table-body");
-            const eventSource = new EventSource("/api/actions/stream");
-            reiniciarTemporizadorInatividade();
-            iniciarStreamStatus();
+        const result = await response.json();
+
+        if (response.ok) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: result.message,
+                showConfirmButton: false,
+                timer: 5000,
+                position: 'top-end',
+                toast: true,
+                background: '#28a745',
+            });
             atualizarUserActions();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: result.status,
+                text: result.error || 'Erro desconhecido.',
+            });
+        }
+    } catch (err) {
+        console.error('Erro ao enviar os dados:', err);
+    }
+}
 
-        
-            eventSource.onmessage = event => {
-                const data = JSON.parse(event.data);
-                streamTableBody.innerHTML = data.map(action => {
-                    const status = action.fim ? action.fim : "Em andamento";
-        
-                    // Renderiza o checkbox com base no valor de complemento
-                    const complementoCheckbox = `
-                        <input type="checkbox" class="form-check-input"${action.complemento ? "checked" : ""} disabled>
-                    `;
-        
-                    return `
-                        <tr>
-                            <td>${action.username}</td>
-                            <td>${action.estado}</td>
-                            <td>${action.diario}</td>
-                            <td>${complementoCheckbox}</td>
-                            <td>${action.data_publicacao}</td>
-                            <td>${getStatusBadge(action.status)}</td>
-                        </tr>
-                    `;
-                }).join("");
-            };
-        });
-        
+window.finalizarAcao = async function(id) {
+    try {
+        const response = await fetchWithAuth(`/api/actions/finalizar/${id}`, { method: 'PUT' });
 
-    
+        if (response.ok) {
+            const result = await response.json();
 
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: result.message,
+                showConfirmButton: false,
+                timer: 5000,
+                position: 'top-end',
+                toast: true,
+                background: '#28a745',
+            });
+
+            atualizarUserActions();
+        } else {
+            const error = await response.json();
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro ao Finalizar',
+                text: error.message || 'Erro desconhecido.',
+            });
+        }
+    } catch (err) {
+        console.error('Erro ao finalizar a ação:', err);
+    }
+}
+
+async function atualizarUserActions() {
+    try {
+        const response = await fetchWithAuth('/api/user/actions');
+        const data = await response.json();
+
+        const userActions = document.getElementById('user-actions');
+        userActions.innerHTML = data.map(action => `
+            <div class="mb-3 p-2 border rounded">
+                <p><strong>Estado:</strong> ${action.estado}</p>
+                <p><strong>Diário:</strong> ${action.diario}</p>
+                <td  style="text-align: center; vertical-align: middle;">
+                   <strong>Complemento </strong> <input class="form-check-input" type="checkbox" ${action.complemento ? "checked" : ""} disabled>
+                </td>
+                <button class="btn btn-sm btn-success w-100" onclick="finalizarAcao(${action.ID_log})">Finalizar</button>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Erro ao buscar as ações do usuário:', err);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const sidebar = document.getElementById("sidebar");
+    const mainContent = document.getElementById("main-content");
+    const toggleButton = document.getElementById("toggle-btn");
+
+    toggleButton.addEventListener("click", () => {
+        sidebar.classList.toggle("collapsed");
+        mainContent.classList.toggle("shifted");
+    });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const streamTableBody = document.getElementById("stream-table-body");
+    const eventSource = new EventSource("/api/actions/stream");
+    reiniciarTemporizadorInatividade();
+    iniciarStreamStatus();
+    atualizarUserActions();
+
+    eventSource.onmessage = event => {
+        const data = JSON.parse(event.data);
+        streamTableBody.innerHTML = data.map(action => {
+            const status = action.fim ? action.fim : "Em andamento";
+
+            const complementoCheckbox = `
+                <input type="checkbox" class="form-check-input"${action.complemento ? "checked" : ""} disabled>
+            `;
+
+            return `
+                <tr>
+                    <td>${action.username}</td>
+                    <td>${action.estado}</td>
+                    <td>${action.diario}</td>
+                    <td>${complementoCheckbox}</td>
+                    <td>${action.data_publicacao}</td>
+                    <td>${getStatusBadge(action.status)}</td>
+                </tr>
+            `;
+        }).join("");
+    };
+});
 
 // Função para verificar o status do sistema usando SSE
 function iniciarStreamStatus() {
@@ -209,12 +210,11 @@ function iniciarStreamStatus() {
     };
 }
 
-let inatividadeTimeout;  // Variável para armazenar o temporizador de inatividade
-let inatividadeStartTime;  // Hora de início da inatividade
-let inatividadeMensagemStartTime;  // Hora de início da mensagem de inatividade
-let inatividadeContador = 0;  // Contador de tempo após exibição da mensagem
+let inatividadeTimeout;
+let inatividadeStartTime;
+let inatividadeMensagemStartTime;
+let inatividadeContador = 0;
 
-// Função para exibir a mensagem de inatividade
 function exibirMensagemInatividade() {
     Swal.fire({
         icon: 'warning',
@@ -224,32 +224,24 @@ function exibirMensagemInatividade() {
         allowOutsideClick: false,
         allowEscapeKey: false        
     }).then(() => {
-        // Calcula o tempo que levou para clicar em "OK"
-        const tempoConfirmacao = (Date.now() - inatividadeMensagemStartTime) / 1000 / 60; // Em minutos
+        const tempoConfirmacao = (Date.now() - inatividadeMensagemStartTime) / 1000 / 60;
 
-        // Verifica se o tempo foi igual ou maior que 5 minutos
         if (tempoConfirmacao >= 5) {
             salvarInatividade(tempoConfirmacao);
         }
 
-        // Reinicia o temporizador de inatividade após o usuário confirmar
         reiniciarTemporizadorInatividade();
     });
 
-    // Salva o momento em que a mensagem foi exibida
     inatividadeMensagemStartTime = Date.now();
 }
 
-// Função para reiniciar o temporizador de inatividade
 function reiniciarTemporizadorInatividade() {
     clearTimeout(inatividadeTimeout);
     inatividadeStartTime = Date.now();
-    
-    // Define um novo temporizador de 5 minutos para exibir a mensagem
     inatividadeTimeout = setTimeout(exibirMensagemInatividade, 5 * 60000);
 }
 
-// Função para enviar o tempo de inatividade para o servidor
 async function salvarInatividade(totalInatividade) {
     try {
         const response = await fetchWithAuth('/api/salvar_inatividade', {
@@ -272,7 +264,6 @@ async function salvarInatividade(totalInatividade) {
     }
 }
 
-// Adiciona eventos de interação do usuário para reiniciar o temporizador
 document.addEventListener("mousemove", reiniciarTemporizadorInatividade);
 document.addEventListener("keydown", reiniciarTemporizadorInatividade);
 document.addEventListener("click", reiniciarTemporizadorInatividade);
