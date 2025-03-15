@@ -8,7 +8,9 @@ jwt_util = JWTUtil()
 
 @front_bp.route('/confeccao_pecas')
 def testeLogin():
-    return render_template("confeccao.html")
+    if jwt_util.get_role(obter_token()) != 'ADM':
+        return jsonify({"error": "Acesso negado! Você não tem permissão para acessar esta página."}), 403
+    return render_template('confeccao.html', username= jwt_util.get_username(obter_token()), role= jwt_util.get_role(obter_token()))
 
 
 @front_bp.route('/signin')

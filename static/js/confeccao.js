@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Exibir o carregamento
     loadingSpinner.classList.remove("d-none");
 
-    fetchWithAuth("http://192.168.1.8:8000/api/users", {
+    fetchWithAuth("http://192.168.1.3:8000/api/users", {
         method: "GET",
         headers: {
             'Content-Type': 'application/json'
@@ -28,13 +28,12 @@ document.addEventListener("DOMContentLoaded", () => {
         return response.json();
     })
     .then(data => {
-        console.log("Dados recebidos:", data); // DEBUG
-
         // Limpa a tabela antes de adicionar novos dados
         tableBody.innerHTML = "";
 
         data.forEach(user => {
             const row = document.createElement("tr");
+            row.setAttribute("id", `${user.ID_auth}`); 
             row.innerHTML = `
                 <td>${String(user.cod_escritorio).padStart(3, '0')}</td>
                 <td>${user.username}</td>
@@ -42,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
 
             // Adiciona evento de clique para abrir os detalhes do usuário
-            row.addEventListener("click", () => showUserDetails(user));
+            row.addEventListener("click", () => sendUserId(user.ID_auth));
 
             tableBody.appendChild(row);
         });
@@ -58,13 +57,48 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-function showUserDetails(user) {
+
+function sendUserId(userId) {
+
+    fetchWithAuth(`http://192.168.1.3:8000/api/users/${userId}/detail`, {
+        method: "GET",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Erro ao enviar o ID: " + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log(data)
+        showUserDetails(data);  // Passa os detalhes do usuário para a função showUserDetails
+    })
+    .catch(error => {
+        console.error("Erro ao enviar o ID do usuário:", error);
+        alert("Erro ao selecionar usuário.");
+    });
+}
+
+function showUserDetails(userArray) {
+    if (!userArray || userArray.length === 0) {
+        console.error("Usuário não encontrado ou resposta inválida.");
+        alert("Usuário não encontrado.");
+        return;
+    }
+
+    const user = userArray[0]; // Pegando o primeiro item do array
+
     Swal.fire({
         title: `Detalhes de ${user.username}`,
         html: `
             <p><strong>ID:</strong> ${user.ID_auth}</p>
             <p><strong>ID Token:</strong> ${user.ID_token}</p>
             <p><strong>Último Login:</strong> ${user.lastLogin}</p>
+            <p><strong>Saldo de Confecção:</strong> ${user.Saldo}<p>
             <p><strong>Limite de confecção Atual:</strong> ${user.limiteConfeccao}<p>
             <p><strong>Limite de Confecção para:</strong> 
                 <input type="number" id="limiteInput" value="" min="1">
@@ -130,7 +164,7 @@ function fetchUserHistory(userId) {
     const spinner = document.getElementById("loading-spinner");
     spinner.classList.remove("d-none");
     
-    fetchWithAuth(`http://192.168.1.8:8000/api/users/${userId}/history`, {
+    fetchWithAuth(`http://192.168.1.3:8000/api/users/${userId}/history`, {
         method: "GET",
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
