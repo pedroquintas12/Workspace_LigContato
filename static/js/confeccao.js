@@ -6,18 +6,34 @@ function getStatuslogin(status) {
     if (status === "B") return '<span class="badge bg-danger">BLOQUEADO</span>';
     return status;
 }
+
+function getCookie(name) {
+    const cookies = document.cookie.split("; "); // Divide os cookies em pares chave=valor
+    for (let cookie of cookies) {
+        const [key, value] = cookie.split("="); // Separa a chave do valor
+        if (key === name) {
+            return decodeURIComponent(value); // Decodifica valores que tenham caracteres especiais
+        }
+    }
+    return null; // Retorna null se o cookie não for encontrado
+}
+const toke = getCookie("api.token")
+
 document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("user-table-body");
     const errorMessage = document.getElementById("error-message");
     const loadingSpinner = document.getElementById("loading-spinner");
 
+
+    console.log(toke)
     // Exibir o carregamento
     loadingSpinner.classList.remove("d-none");
 
-    fetchWithAuth("http://192.168.1.3:8000/api/users", {
+    fetch("http://api.ligcontato.com.br:8881/api/users", {
         method: "GET",
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${toke}`             
         },
         credentials: 'include'
      })
@@ -60,10 +76,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function sendUserId(userId) {
 
-    fetchWithAuth(`http://192.168.1.3:8000/api/users/${userId}/detail`, {
+    fetchWithAuth(`http://api.ligcontato.com.br:8881/api/users/${userId}/detail`, {
         method: "GET",
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${toke}`             
+
         },
         credentials: 'include',
     })
@@ -164,9 +182,11 @@ function fetchUserHistory(userId) {
     const spinner = document.getElementById("loading-spinner");
     spinner.classList.remove("d-none");
     
-    fetchWithAuth(`http://192.168.1.3:8000/api/users/${userId}/history`, {
+    fetchWithAuth(`http://api.ligcontato.com.br:8881/api/users/${userId}/history`, {
         method: "GET",
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${toke}`             
+                    },
         credentials: 'include'
 
     })
@@ -324,3 +344,63 @@ function showFilteredHistory(filteredData) {
     }
 }
 
+// Evento para o botão de adicionar
+document.getElementById('addButton').addEventListener('click', function () {
+    Swal.fire({
+        title: 'Cadastrar Escritório',
+        html:
+            '<input id="codEscritorio" class="swal2-input" placeholder="Código do Escritório">' +
+            '<input id="limiteConfeccao" class="swal2-input" placeholder="Limite de Confecção" type="number">',
+        showCancelButton: true,
+        confirmButtonText: 'Registrar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const codEscritorio = document.getElementById('codEscritorio').value;
+            const limiteConfeccao = document.getElementById('limiteConfeccao').value;
+            
+            if (!codEscritorio || !limiteConfeccao) {
+                Swal.showValidationMessage('Por favor, preencha todos os campos!');
+                return false;
+            }
+
+            // Envia a requisição para a API
+            return fetchWithAuth('http://api.ligcontato.com.br:8881/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${toke}`             
+                },
+                body: JSON.stringify({
+                    codigo_escritorio: codEscritorio,
+                    limite_confeccoes: limiteConfeccao
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Sucesso!', data.message , 'success');
+                } else {
+                    Swal.fire('Erro!', data.erro , 'error');
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: "error",
+                    title: "Erro",
+                    text: error.message,
+                });
+            })
+        }
+    });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const sidebar = document.getElementById("sidebar");
+    const mainContent = document.getElementById("main-content");
+    const toggleButton = document.getElementById("toggle-btn");
+
+    toggleButton.addEventListener("click", () => {
+        sidebar.classList.toggle("collapsed");
+        mainContent.classList.toggle("shifted");
+    });
+});

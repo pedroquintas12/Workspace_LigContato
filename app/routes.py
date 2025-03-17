@@ -149,7 +149,7 @@ def login():
 
         # Criar uma resposta e adicionar o cookie
         resp = make_response(jsonify(result_holder["result"]))
-        resp.set_cookie('api.token', token, httponly=True)
+        resp.set_cookie('api.token', token)
         return resp
 
     except Exception as e:

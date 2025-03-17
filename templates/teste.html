@@ -1,120 +1,89 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workspace de Seleção</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .box {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            padding: 20px;
-            width: 300px;
-        }
-        button {
-            margin-top: 10px;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-    </style>
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" href="https://resources-lig.s3.amazonaws.com/images/logo-thumbnail-whatsapp.png">
 </head>
-<body>
-    <h1>Workspace de Seleção</h1>
-    <div class="container">
-        <div class="box">
-            <h3>Seleção de Estados</h3>
-            <select id="estado" multiple size="10">
-                <option value="AC">Acre</option>
-                <option value="AL">Alagoas</option>
-                <option value="AP">Amapá</option>
-                <option value="AM">Amazonas</option>
-                <option value="BA">Bahia</option>
-                <option value="CE">Ceará</option>
-                <option value="DF">Distrito Federal</option>
-                <option value="ES">Espírito Santo</option>
-                <option value="GO">Goiás</option>
-                <option value="MA">Maranhão</option>
-                <option value="MT">Mato Grosso</option>
-                <option value="MS">Mato Grosso do Sul</option>
-                <option value="MG">Minas Gerais</option>
-                <option value="PA">Pará</option>
-                <option value="PB">Paraíba</option>
-                <option value="PR">Paraná</option>
-                <option value="PE">Pernambuco</option>
-                <option value="PI">Piauí</option>
-                <option value="RJ">Rio de Janeiro</option>
-                <option value="RN">Rio Grande do Norte</option>
-                <option value="RS">Rio Grande do Sul</option>
-                <option value="RO">Rondônia</option>
-                <option value="RR">Roraima</option>
-                <option value="SC">Santa Catarina</option>
-                <option value="SP">São Paulo</option>
-                <option value="SE">Sergipe</option>
-                <option value="TO">Tocantins</option>
-            </select>
-        </div>
-
-        <div class="box">
-            <h3>Seleção de Diários</h3>
-            <select id="diario" size="5">
-                <option value="diario1">Diário 1</option>
-                <option value="diario2">Diário 2</option>
-                <option value="diario3">Diário 3</option>
-                <option value="diario4">Diário 4</option>
-                <option value="diario5">Diário 5</option>
-            </select>
-        </div>
-
-        <div class="box">
-            <h3>Status</h3>
-            <select id="status">
-                <option value="lendo-vsap">Lendo VSAP</option>
-                <option value="finalizado">Finalizado</option>
-            </select>
+<body class="bg-light">
+    <div class="container d-flex justify-content-center align-items-center vh-100">
+        <div class="card p-4 shadow-lg" style="width: 400px;">
+            <h3 class="text-center mb-4">Login</h3>
+            <form id="loginForm" method="POST">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </div>
+                <div id="error-message" class="text-danger mt-3 d-none"></div>
+            </form>
         </div>
     </div>
-    <button id="adicionar">Adicionar</button>
-
-    <div id="resultado"></div>
-
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        const adicionarBtn = document.getElementById('adicionar');
-        const resultadoDiv = document.getElementById('resultado');
+        document.getElementById("loginForm").addEventListener("submit", function(event) {
+            event.preventDefault(); // Previne o envio padrão do formulário
+            
+            const username = document.getElementById("username").value;
 
-        adicionarBtn.addEventListener('click', () => {
-            const estadosSelecionados = Array.from(document.getElementById('estado').selectedOptions).map(option => option.text);
-            const diarioSelecionado = document.getElementById('diario').value;
-            const statusSelecionado = document.getElementById('status').value;
+            // Seleciona o elemento de erro
+            const errorMessageElement = document.getElementById("error-message");
 
-            if (estadosSelecionados.length === 0 || !diarioSelecionado) {
-                alert('Selecione pelo menos um estado e um diário.');
-                return;
-            }
+            fetch('http://api.ligcontato.com.br:8881/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
 
-            const resultado = `
-                <p><strong>Estados:</strong> ${estadosSelecionados.join(', ')}</p>
-                <p><strong>Diário:</strong> ${diarioSelecionado}</p>
-                <p><strong>Status:</strong> ${statusSelecionado}</p>
-                <hr>
-            `;
-            resultadoDiv.innerHTML += resultado;
+                })
+            })
+            .then(response => {
+                // Verifica se a resposta é um erro
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Erro ao fazer login');
+                    });
+                }
+                return response.text();
+            })
+            .then(html => {
+                document.open();
+                document.write(html);
+                document.close();
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                // Exibe a mensagem de erro no front-end
+                errorMessageElement.textContent = error.message;
+                errorMessageElement.classList.remove("d-none");
+            });
         });
+document.addEventListener("DOMContentLoaded", function () {
+    // Captura os parâmetros da URL
+    const params = new URLSearchParams(window.location.search);
+    const errorMessage = params.get("error");
+
+    if (errorMessage) {
+        Swal.fire({
+            title: "Atenção!",
+            text: errorMessage,
+            icon: "warning",
+            showConfirmButton: false,
+            timer: 5000,
+            position: 'top-end',
+            toast: true,
+        }).then(() => {
+            // Remove o parâmetro da URL após exibir o alerta
+            window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    }
+});
     </script>
 </body>
 </html>

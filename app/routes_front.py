@@ -6,6 +6,10 @@ from modules.auth.JWT.filter.JWTAuthentication import token_required, JWTUtil,ob
 front_bp = Blueprint('front',__name__)
 jwt_util = JWTUtil()
 
+@front_bp.route('/teste-front')
+def teste():
+    return render_template('teste.html')
+
 @front_bp.route('/confeccao_pecas')
 def testeLogin():
     if jwt_util.get_role(obter_token()) != 'ADM':
