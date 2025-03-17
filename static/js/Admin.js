@@ -25,7 +25,7 @@ function calculateElapsedTime(startTime) {
     if (isNaN(start.getTime()) || elapsedMs < 0) return "Tempo inválido";
 
     const hours = Math.floor(elapsedMs / 3600000); // 1 hora = 3600000 ms
-    const minutes = Math.floor(elapsedMs / 60000);
+    const minutes = Math.floor((elapsedMs % 3600000) / 60000); // Minutos restantes
     const seconds = Math.floor((elapsedMs % 60000) / 1000);
 
     return `${hours}h ${minutes}m ${seconds}s`;

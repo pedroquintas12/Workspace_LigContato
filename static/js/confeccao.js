@@ -455,9 +455,9 @@ document.getElementById('addButton').addEventListener('click', function () {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    Swal.fire('Sucesso!', data.message , 'success');
+                    Swal.fire('Sucesso!', 'usuario criado com sucesso!' , 'success');
                 } else {
-                    Swal.fire('Erro!', data.erro , 'error');
+                    Swal.fire('Erro!', response.error , 'error');
                 }
             })
             .catch(error => {
