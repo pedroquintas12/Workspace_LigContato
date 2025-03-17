@@ -1,5 +1,13 @@
 import { fetchWithAuth } from './auth.js';
 
+function showSpinner() {
+    document.getElementById("loading-overlay").style.display = "block";
+}
+
+function hideSpinner() {
+    document.getElementById("loading-overlay").style.display = "none";
+}
+
 
 function getStatuslogin(status) {
     if (status === "L") return '<span class="badge bg-success">LIBERADO</span>';
@@ -22,12 +30,8 @@ const toke = getCookie("api.token")
 document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("user-table-body");
     const errorMessage = document.getElementById("error-message");
-    const loadingSpinner = document.getElementById("loading-spinner");
 
-
-    console.log(toke)
-    // Exibir o carregamento
-    loadingSpinner.classList.remove("d-none");
+    showSpinner();
 
     fetch("http://api.ligcontato.com.br:8881/api/users", {
         method: "GET",
@@ -62,21 +66,24 @@ document.addEventListener("DOMContentLoaded", () => {
             tableBody.appendChild(row);
         });
 
-        // Esconde o spinner de carregamento
-        loadingSpinner.classList.add("d-none");
     })
     .catch(error => {
         console.error("Erro ao buscar os usuários:", error);
         errorMessage.textContent = error.message;
         errorMessage.classList.remove("d-none");
         loadingSpinner.classList.add("d-none");
+    })
+    .finally(() =>{
+        hideSpinner();
     });
+
 });
 
 
 function sendUserId(userId) {
 
-    fetchWithAuth(`http://api.ligcontato.com.br:8881/api/users/${userId}/detail`, {
+    showSpinner();
+    fetchWithAuth(`http://localhost:8000/api/users/${userId}/detail`, {
         method: "GET",
         headers: {
             'Content-Type': 'application/json',
@@ -98,6 +105,9 @@ function sendUserId(userId) {
     .catch(error => {
         console.error("Erro ao enviar o ID do usuário:", error);
         alert("Erro ao selecionar usuário.");
+    })
+    .finally(() => {
+        hideSpinner();
     });
 }
 
@@ -109,6 +119,11 @@ function showUserDetails(userArray) {
     }
 
     const user = userArray[0]; // Pegando o primeiro item do array
+
+    // Define dinamicamente o botão de ação
+    const actionButton = user.status === "B" 
+        ? `<button id="reativarUsuario" class="swal2-confirm swal2-styled" style="background-color: green;">✅ Reativar</button>` 
+        : `<button id="bloquearUsuario" class="swal2-cancel swal2-styled" style="background-color: red;">🚫 Bloquear</button>`;
 
     Swal.fire({
         title: `Detalhes de ${user.username}`,
@@ -122,7 +137,7 @@ function showUserDetails(userArray) {
                 <input type="number" id="limiteInput" value="" min="1">
             </p>
             <button id="verHistorico" class="swal2-confirm swal2-styled" style="margin-right: 10px;">📜 Ver Histórico</button>
-            <button id="bloquearUsuario" class="swal2-cancel swal2-styled" style="background-color: red;">🚫 Bloquear</button>
+            ${actionButton} 
         `,
         showCancelButton: true,
         confirmButtonText: "Salvar Alterações",
@@ -138,21 +153,28 @@ function showUserDetails(userArray) {
         fetchUserHistory(user.ID_auth);
     });
 
-    // Event Listener para bloquear o usuário
-    document.getElementById("bloquearUsuario").addEventListener("click", () => {
-        bloquearUsuario(user.ID_auth, user.username);
-    });
+    // Event Listener para bloquear ou reativar o usuário
+    if (user.status === "B") {
+        document.getElementById("reativarUsuario").addEventListener("click", () => {
+            reativarUsuario(user.ID_auth, user.username);
+        });
+    } else {
+        document.getElementById("bloquearUsuario").addEventListener("click", () => {
+            bloquearUsuario(user.ID_auth, user.username);
+        });
+    }
 }
 
 
-
 function updateUserLimit(userId, newLimit) {
-    return fetchWithAuth(`http://192.168.1.8:8000/api/users/${userId}/update_limit`, {
-        method: "PATCH",
+    showSpinner();
+    return fetchWithAuth(`http://localhost:8000/api/users/${userId}/update`, {
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${toke}`             
         },
-        body: JSON.stringify({ limiteConfeccao: newLimit })
+        body: JSON.stringify({ limite_confeccao: newLimit })
     })
     .then(response => {
         if (!response.ok) {
@@ -163,24 +185,26 @@ function updateUserLimit(userId, newLimit) {
     .then(() => {
         Swal.fire({
             icon: "success",
-            title: "Atualizado com sucesso!",
-            text: "O limite de confecção foi atualizado.",
+            title: "sucesso!",
+            text: `Saldo atualizado com sucesso`,
         });
     })
     .catch(error => {
         Swal.fire({
             icon: "error",
-            title: "Erro",
-            text: error.message,
+            title: error.message,
+            text: error.detalhes,
         });
+    })
+    .finally(()=>{
+        hideSpinner();
     });
 }
 
 
 function fetchUserHistory(userId) {
     // Mostra o spinner enquanto carrega os dados
-    const spinner = document.getElementById("loading-spinner");
-    spinner.classList.remove("d-none");
+    showSpinner();
     
     fetchWithAuth(`http://api.ligcontato.com.br:8881/api/users/${userId}/history`, {
         method: "GET",
@@ -208,9 +232,9 @@ function fetchUserHistory(userId) {
         });
     })
     .finally(() => {
-        // Esconde o spinner quando o carregamento for concluído
-        spinner.classList.add("d-none");
+        hideSpinner();
     });
+
 }
 
 
@@ -226,9 +250,12 @@ function bloquearUsuario(userId, username) {
         cancelButtonText: "Cancelar"
     }).then((result) => {
         if (result.isConfirmed) {
-            fetchWithAuth(`http://192.168.1.8:8000/api/users/${userId}/block`, {
-                method: "PATCH",
-                headers: { 'Content-Type': 'application/json' }
+            showSpinner();
+            fetchWithAuth(`http://localhost:8000/api/users/${userId}/block`, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${toke}`             
+                 }
             })
             .then(response => {
                 if (!response.ok) {
@@ -249,12 +276,61 @@ function bloquearUsuario(userId, username) {
                     title: "Erro",
                     text: error.message,
                 });
-            });
+            })
+            .finally(()=>{
+                hideSpinner();
+            })
         }
     });
 }
 
 
+function reativarUsuario(userId, username) {
+    Swal.fire({
+        title: `Deseja reativar ${username}?`,
+        text: "O usuário poderá acessar o sistema novamente.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#28a745",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Sim, reativar!",
+        cancelButtonText: "Cancelar"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showSpinner();
+            fetchWithAuth(`http://localhost:8000/api/users/${userId}/reativar`, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${toke}`             
+
+                 }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Erro ao reativar usuário.");
+                }
+                return response.json();
+            })
+            .then(() => {
+                Swal.fire({
+                    icon: "success",
+                    title: "Usuário reativado!",
+                    text: `${username} foi reativado com sucesso.`,
+                });
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: "error",
+                    title: "Erro",
+                    text: error.message,
+                });
+            })
+            .finally(()=>{
+                hideSpinner();
+            });
+        }
+    });
+}
 
 function showHistoryModal(userId, historyData) {
     let historyHtml = `
@@ -362,7 +438,8 @@ document.getElementById('addButton').addEventListener('click', function () {
                 Swal.showValidationMessage('Por favor, preencha todos os campos!');
                 return false;
             }
-
+            
+            showSpinner();
             // Envia a requisição para a API
             return fetchWithAuth('http://api.ligcontato.com.br:8881/api/register', {
                 method: 'POST',
@@ -389,6 +466,9 @@ document.getElementById('addButton').addEventListener('click', function () {
                     title: "Erro",
                     text: error.message,
                 });
+            })
+            .finally(() =>{
+                hideSpinner();
             })
         }
     });

@@ -145,11 +145,6 @@ tr:hover {
     font-weight: bold;
 }
 
-.spinner-border {
-    display: none;
-    margin: 20px auto;
-    color: #007bff;
-}
 
 .footer {
     text-align: center;
