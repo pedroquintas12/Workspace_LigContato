@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function sendUserId(userId) {
 
     showSpinner();
-    fetchWithAuth(`http://localhost:8000/api/users/${userId}/detail`, {
+    fetchWithAuth(`http://api.ligcontato.com.br:8881/api/users/${userId}/detail`, {
         method: "GET",
         headers: {
             'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ function showUserDetails(userArray) {
 
 function updateUserLimit(userId, newLimit) {
     showSpinner();
-    return fetchWithAuth(`http://localhost:8000/api/users/${userId}/update`, {
+    return fetchWithAuth(`http://api.ligcontato.com.br:8881/api/users/${userId}/update`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json',
@@ -251,7 +251,7 @@ function bloquearUsuario(userId, username) {
     }).then((result) => {
         if (result.isConfirmed) {
             showSpinner();
-            fetchWithAuth(`http://localhost:8000/api/users/${userId}/block`, {
+            fetchWithAuth(`http://api.ligcontato.com.br:8881/api/users/${userId}/block`, {
                 method: "POST",
                 headers: { 'Content-Type': 'application/json',
                     'Authorization': `Bearer ${toke}`             
@@ -298,7 +298,7 @@ function reativarUsuario(userId, username) {
     }).then((result) => {
         if (result.isConfirmed) {
             showSpinner();
-            fetchWithAuth(`http://localhost:8000/api/users/${userId}/reativar`, {
+            fetchWithAuth(`http://api.ligcontato.com.br:8881/api/users/${userId}/reativar`, {
                 method: "POST",
                 headers: { 'Content-Type': 'application/json',
                     'Authorization': `Bearer ${toke}`             
