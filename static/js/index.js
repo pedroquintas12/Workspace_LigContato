@@ -35,7 +35,6 @@ window.atualizarDiarios = async function() {
                     });
                 });
                 document.getElementById('complementoCheckbox').checked = false;
-                document.getElementById('dataComplemento').value = '';
             } catch (error) {
                 console.error('Erro ao buscar os diários:', error);
             }
@@ -164,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
     reiniciarTemporizadorInatividade();
     iniciarStreamStatus();
     atualizarUserActions();
-    
+
     eventSource.onmessage = event => {
         dados = JSON.parse(event.data);
         renderizarTabela(dados);
