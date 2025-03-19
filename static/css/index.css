@@ -125,7 +125,11 @@ h1 {
         min-width: 300px; /* Define um tamanho mínimo */
         position: relative; /* Mantém o contexto de posicionamento */
     }
-
+    a {
+        text-decoration: none; /* Remove o sublinhado */
+        color: inherit; /* Mantém a cor do texto conforme o resto do layout */
+    }
+    
     .main-content {
         display: flex;
         justify-content: space-between;

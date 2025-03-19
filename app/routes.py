@@ -270,10 +270,11 @@ def registrar_acao():
         cursor.execute("SELECT COUNT(DISTINCT estado) FROM log_actions WHERE ID_auth = %s AND status = 'L';", (user_id,))
         active_count = cursor.fetchone()[0]
 
-        if active_count >= 2:
+        #verifica quantaos estados o usuario esta lendo
+        if active_count >= 3:
             conn.close()
             return jsonify({
-                "error": "Você só pode ler 2 estados por vez!",
+                "error": "Você só pode ler 3 estados por vez!",
                 "codigo": 409,
                 "status": "Atenção"
             }), 409
@@ -365,6 +366,43 @@ def stream_actions():
                         registro['fim'] = formatar_data(registro['fim'])  
                         registro['data_publicacao'] = formartar_data_AMD(registro['data_publicacao'])
 
+
+                    # Envia os dados via SSE
+                    yield f"data: {json.dumps(acoes)}\n\n"
+
+                conn.close()
+                sleep(2)  # Aguarda 2 segundos antes de verificar novamente
+
+            except Exception as e:
+                logger.error(f"Erro no SSE: {e}")
+                sleep(2)
+    threading.Thread(target=event_stream, daemon=True).start()
+
+    return Response(event_stream(), content_type="text/event-stream")
+
+@main_bp.route('/api/actions/stream_estados', methods=['GET'])
+@token_required
+def stream_estados():
+    def event_stream():
+        last_update = None
+        today = datetime.now().strftime('%Y-%m-%d')  # Filtra os dados apenas do dia atual
+
+        while True:
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor(dictionary=True)
+
+                # Verifica a última atualização na tabela log_updates
+                cursor.execute("SELECT MAX(last_update) as last_update FROM log_updates")
+                result = cursor.fetchone()
+                new_update = result['last_update']
+
+                if new_update and new_update != last_update:
+                    last_update = new_update
+
+                    # Busca os registros de log_actions do dia atual
+                    cursor.execute("SELECT username,estado FROM log_actions WHERE DATE(inicio) = %s AND status = 'L' GROUP BY estado,username ORDER BY estado ASC;", (today,))
+                    acoes = cursor.fetchall()
 
                     # Envia os dados via SSE
                     yield f"data: {json.dumps(acoes)}\n\n"

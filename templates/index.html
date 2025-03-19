@@ -136,23 +136,41 @@
                     <div class="lateral-section" id="user-actions"></div>
                 </div>
                 <div class="stream-table">
-                    <h4 class="text-center">Dados do Usuário</h4>
+                    <h4 class="text-center">Diários</h4>
                     <div class="col-md-4 table-container-scroll" id="table_stream">
                         <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>Username</th>
-                                    <th>Estado</th>
-                                    <th>Diário</th>
-                                    <th>Complemento</th>
-                                    <th>Data Pub</th>
-                                    <th>Status</th>
+                                    <th data-column="username" class="sortable"><a href="#" onclick="ordenarTabela('username')">Username <span></span></a></th>
+                                    <th data-column="estado" class="sortable"><a href="#" onclick="ordenarTabela('estado')">Estado <span></span></a></th>
+                                    <th data-column="diario" class="sortable"><a href="#" onclick="ordenarTabela('diario')">Diário <span></span></a></th>
+                                    <th data-column="complemento" class="sortable"><a href="#" onclick="ordenarTabela('complemento')">Complemento <span></span></a></th>
+                                    <th data-column="data_publicacao" class="sortable"><a href="#" onclick="ordenarTabela('data_publicacao')">Data Pub <span></span></a></th>
+                                    <th data-column="status" class="sortable"><a href="#" onclick="ordenarTabela('status')">Status <span></span></a></th>
                                 </tr>
                             </thead>
                             <tbody id="stream-table-body">
-                                <!-- Dados serão inseridos dinamicamente aqui -->
+                                <!-- Dados inseridos dinamicamente -->
                             </tbody>
                         </table>
+                    </div>
+                
+                    <div class="stream-table mt-3">
+                        <h4 class="text-center">Estados sendo lidos
+                        </h4>
+                        <div class="table-container-scroll" style="text-align: center;">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="state-table-body">
+                                    <!-- Dados dinâmicos -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

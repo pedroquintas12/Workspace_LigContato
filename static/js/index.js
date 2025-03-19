@@ -34,6 +34,8 @@ window.atualizarDiarios = async function() {
                         diariosContainer.appendChild(checkboxDiv);
                     });
                 });
+                document.getElementById('complementoCheckbox').checked = false;
+                document.getElementById('dataComplemento').value = '';
             } catch (error) {
                 console.error('Erro ao buscar os diários:', error);
             }
@@ -157,18 +159,21 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", () => {
     const streamTableBody = document.getElementById("stream-table-body");
     const eventSource = new EventSource("/api/actions/stream");
+    let dados = []; // Armazena os dados recebidos da API
+    let ordemAtual = {}; // Guarda a ordem de cada coluna
     reiniciarTemporizadorInatividade();
     iniciarStreamStatus();
     atualizarUserActions();
-
+    
     eventSource.onmessage = event => {
-        const data = JSON.parse(event.data);
+        dados = JSON.parse(event.data);
+        renderizarTabela(dados);
+    };
+
+    function renderizarTabela(data) {
         streamTableBody.innerHTML = data.map(action => {
             const status = action.fim ? action.fim : "Em andamento";
-
-            const complementoCheckbox = `
-                <input type="checkbox" class="form-check-input"${action.complemento ? "checked" : ""} disabled>
-            `;
+            const complementoCheckbox = `<input type="checkbox" class="form-check-input" ${action.complemento ? "checked" : ""} disabled>`;
 
             return `
                 <tr>
@@ -176,8 +181,77 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${action.estado}</td>
                     <td>${action.diario}</td>
                     <td>${complementoCheckbox}</td>
-                    <td>${action.data_publicacao}</td>
+                    <td>${formatarData(action.data_publicacao)}</td>
                     <td>${getStatusBadge(action.status)}</td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    document.querySelectorAll("th.sortable").forEach(header => {
+        header.addEventListener("click", () => {
+            const coluna = header.dataset.column;
+            ordenarTabela(coluna, header);
+        });
+    });
+
+    function ordenarTabela(coluna, header) {
+        const ordem = ordemAtual[coluna] === "asc" ? "desc" : "asc";
+        ordemAtual[coluna] = ordem;
+
+        dados.sort((a, b) => {
+            let valA = a[coluna];
+            let valB = b[coluna];
+
+            if (coluna === "data_publicacao") {
+                valA = (a[coluna] || "1970-01-01"); // Default caso esteja vazio
+                valB = (b[coluna] || "1970-01-01");
+            }
+
+            if (typeof valA === "number" && typeof valB === "number") {
+                return ordem === "asc" ? valA - valB : valB - valA;
+            } else if (valA instanceof Date && valB instanceof Date) {
+                return ordem === "asc" ? valA - valB : valB - valA;
+            } else {
+                return ordem === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+        });
+
+        atualizarSetas(coluna, ordem);
+        renderizarTabela(dados);
+    }
+
+    function atualizarSetas(coluna, ordem) {
+        document.querySelectorAll("th.sortable span").forEach(span => {
+            span.textContent = "";
+        });
+
+        const header = document.querySelector(`th[data-column="${coluna}"] span`);
+        header.textContent = ordem === "asc" ? " 🔼" : " 🔽";
+    }
+
+    function formatarData(data) {
+        if (!data) return ""; // Se a data for nula, retorna vazio
+        const d = new Date(data);
+        if (isNaN(d)) return data; // Se não for uma data válida, retorna original
+        return d.toLocaleDateString("pt-BR"); // Formato DD/MM/AAAA
+    }
+});
+
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    const streamTableBody = document.getElementById("state-table-body");
+    const eventSource = new EventSource("/api/actions/stream_estados");
+
+    eventSource.onmessage = event => {
+        const data = JSON.parse(event.data);
+        streamTableBody.innerHTML = data.map(action => {
+
+            return `
+                <tr>
+                    <td>${action.username}</td>
+                    <td>${action.estado}</td>
                 </tr>
             `;
         }).join("");
