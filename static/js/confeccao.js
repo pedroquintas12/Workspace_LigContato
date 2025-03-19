@@ -454,10 +454,10 @@ document.getElementById('addButton').addEventListener('click', function () {
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.result && data.result.status === "success") {
                     Swal.fire('Sucesso!', 'usuario criado com sucesso!' , 'success');
                 } else {
-                    Swal.fire('Erro!', response.error , 'error');
+                    Swal.fire('Erro!', data.erro, 'error');
                 }
             })
             .catch(error => {
