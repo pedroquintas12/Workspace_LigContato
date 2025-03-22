@@ -401,7 +401,7 @@ def stream_estados():
                     last_update = new_update
 
                     # Busca os registros de log_actions do dia atual
-                    cursor.execute("SELECT username,estado FROM log_actions WHERE DATE(inicio) = %s AND status = 'L' GROUP BY estado,username ORDER BY estado ASC;", (today,))
+                    cursor.execute("SELECT username,estado FROM log_actions WHERE DATE(inicio) = %s AND status = 'L' GROUP BY   estado,username ORDER BY estado ASC;", (today,))
                     acoes = cursor.fetchall()
 
                     # Envia os dados via SSE

@@ -1,4 +1,6 @@
 import { fetchWithAuth } from './auth.js';
+let allUsers = []; 
+
 
 function showSpinner() {
     document.getElementById("loading-overlay").style.display = "block";
@@ -27,9 +29,13 @@ function getCookie(name) {
 }
 const toke = getCookie("api.token")
 
+
+let debounceTimeout; // Para controlar o debounce
+
 document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("user-table-body");
     const errorMessage = document.getElementById("error-message");
+    const searchInput = document.getElementById("searchInput"); // Corrigido o ID do input
 
     showSpinner();
 
@@ -40,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
             'Authorization': `Bearer ${toke}`             
         },
         credentials: 'include'
-     })
+    })
     .then(response => {
         if (!response.ok) {
             throw new Error("Erro ao carregar os dados: " + response.statusText);
@@ -48,36 +54,51 @@ document.addEventListener("DOMContentLoaded", () => {
         return response.json();
     })
     .then(data => {
-        // Limpa a tabela antes de adicionar novos dados
-        tableBody.innerHTML = "";
-
-        data.forEach(user => {
-            const row = document.createElement("tr");
-            row.setAttribute("id", `${user.ID_auth}`); 
-            row.innerHTML = `
-                <td>${String(user.cod_escritorio).padStart(3, '0')}</td>
-                <td>${user.username}</td>
-                <td>${getStatuslogin(user.status)}
-            `;
-
-            // Adiciona evento de clique para abrir os detalhes do usuário
-            row.addEventListener("click", () => sendUserId(user.ID_auth));
-
-            tableBody.appendChild(row);
-        });
-
+        allUsers = data; // Guarda todos os usuários
+        renderTable(allUsers.slice(0, 10)); // Mostra apenas 10 usuários inicialmente
     })
     .catch(error => {
         console.error("Erro ao buscar os usuários:", error);
         errorMessage.textContent = error.message;
         errorMessage.classList.remove("d-none");
-        loadingSpinner.classList.add("d-none");
     })
-    .finally(() =>{
+    .finally(() => {
         hideSpinner();
     });
 
+    // Adiciona evento de pesquisa com debounce
+    searchInput.addEventListener("input", () => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredUsers = allUsers.filter(user => 
+                user.username.toLowerCase().includes(searchTerm) || 
+                String(user.cod_escritorio).includes(searchTerm)
+            );
+            renderTable(filteredUsers); // Atualiza a tabela com os resultados
+        }, 300); // 300ms de debounce para melhorar a performance
+    });
 });
+
+// Função para exibir os usuários na tabela
+function renderTable(users) {
+    const tableBody = document.getElementById("user-table-body");
+    tableBody.innerHTML = ""; // Limpa a tabela
+
+    users.forEach(user => {
+        const row = document.createElement("tr");
+        row.setAttribute("id", `${user.ID_auth}`); 
+        row.innerHTML = `
+            <td>${String(user.cod_escritorio).padStart(3, '0')}</td>
+            <td>${user.username}</td>
+            <td>${getStatuslogin(user.status)}</td>
+        `;
+
+        row.addEventListener("click", () => sendUserId(user.ID_auth));
+
+        tableBody.appendChild(row);
+    });
+}
 
 
 function sendUserId(userId) {

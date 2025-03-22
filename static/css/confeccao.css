@@ -92,10 +92,6 @@ body {
     pointer-events: none;
 }
 
-.table-container-scroll {
-    max-height: 350px;
-    overflow-y: auto;
-}
 
 
 h1 {
@@ -134,10 +130,7 @@ tr:hover {
     cursor: pointer;
 }
 
-.table-responsive {
-    max-height: 400px;
-    overflow-y: auto;
-}
+
 
 .alert {
     display: none;
