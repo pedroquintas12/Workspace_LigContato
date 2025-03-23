@@ -1,5 +1,6 @@
 from datetime import datetime, time
 from flask import Blueprint, Response, json, jsonify, make_response, redirect, render_template, request
+import mysql.connector
 from app.utils.data import ConsultaBanco, InserirBanco
 from flask import jsonify, request
 import threading 
@@ -9,6 +10,7 @@ from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required, o
 from app.utils.date_utils import formatar_data,formartar_data_AMD
 from time import sleep 
 from config.logger_config import logger
+
 
 main_bp = Blueprint('main',__name__)
 jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
@@ -336,6 +338,54 @@ def registrar_acao():
     conn.close()
 
     return jsonify({"message": "Ação registrada com sucesso!"}), 200
+
+@main_bp.route('/api/actions/verificar', methods=['POST'])
+@token_required
+def verficarAcao():
+    data = request.json
+    estado = data.get("estado")
+    diarios = data.get("diarios")  # Agora é uma lista
+    complemento = data.get("complemento")
+    data_publicacao = data.get("data_publicacao")
+
+    if not diarios or not isinstance(diarios, list):
+        return jsonify({"error": "A lista de diários é inválida ou está vazia."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Criar uma query para verificar múltiplos diários
+        query = """
+            SELECT diario FROM log_actions
+            WHERE estado = %s AND complemento = %s AND data_publicacao = %s
+            AND diario IN ({})
+        """.format(', '.join(['%s'] * len(diarios)))  # Gera placeholders (%s, %s, %s, ...)
+
+        params = [estado, complemento, data_publicacao] + diarios
+        cursor.execute(query, params)
+        registros = cursor.fetchall()
+
+        # Extrair os diários que já existem
+        diarios_existentes = [registro["diario"] for registro in registros]
+
+        return jsonify({
+            "exists": bool(diarios_existentes),  # Retorna True se pelo menos um existir
+            "diarios_existentes": diarios_existentes  # Lista os diários encontrados
+        })
+
+    except mysql.connector.Error as err:
+        logger.error(f"Erro desconhecido ao verificar ações: {err}")
+        return jsonify({
+            "error": str(err),
+            "codigo": 500,
+            "status": "Erro ao processar a requisição"
+        }), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
 
 @main_bp.route('/api/actions/stream', methods=['GET'])
 @token_required

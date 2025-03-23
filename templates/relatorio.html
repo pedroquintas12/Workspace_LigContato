@@ -25,51 +25,57 @@
             {% endif %}
         </span>
     </div>
-
     <!-- Barra lateral -->
     <div id="sidebar" class="sidebar">
         <div class="menu-item">
-            <a href="/dashboard">
+            <a href="/dashboard" >
                 <i class="material-icons">dashboard</i>
                 <span>Dashboard</span>
             </a>
         </div>
         {% if role == "ADM" %}
         <div class="menu-item">
-            <a href="/">
+            <a href="/" class="tooltip-sidebar">
                 <i class="material-icons">library_books</i>
                 <span>Jornais</span>
+                <span class="tooltip-text">Acesse os Jornais</span>
             </a>
         </div>
         <div class="menu-item">
-            <a href="/admin">
+            <a href="/admin" class="tooltip-sidebar">
                 <i class="material-icons">dashboard</i>
                 <span>Dashboard</span>
+                <span class="tooltip-text">Acesse o Dashboard</span>
             </a>
         </div>
-        <div class="menu-item">
-            <a href="/relatorio" title="Relatório">
+        <div class="menu-item" >
+            <a href="/relatorio" class="tooltip-sidebar">
                 <i class="material-icons">assessment</i>
                 <span class="menu-text">Relatório</span>
+                <span class="tooltip-text">Acesse o Relatório</span>
             </a>
         </div>
         <div class="menu-item">
-            <a href="/users">
+            <a href="/users" class="tooltip-sidebar">
                 <i class="material-icons">group</i>
-                <span>Usuários</span>
+                    <span>Funcionários</span>
+                    <span class="tooltip-text">Acesse a tabela de Funcionários</span>
             </a>
         </div>
         <div class="menu-item">
-            <a href="/confeccao_pecas">
+            <a href="/confeccao_pecas" class="tooltip-sidebar">
                 <i class="material-icons">add_home_work</i>
                 <span>Confecção de peças</span>
+                <span class="tooltip-text">Acesse a Confecção de Peças</span>
             </a>
         </div>
         {% endif %}
         <div class="menu-item">
-            <a href="/logout">
+            <a href="/logout" class="tooltip-sidebar">
                 <i class="material-icons">exit_to_app</i>
                 <span>Sair</span>
+                <span class="tooltip-text">Fazer Logout</span>
+
             </a>
         </div>
     </div>

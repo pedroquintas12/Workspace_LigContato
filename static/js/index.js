@@ -1,5 +1,6 @@
 import { fetchWithAuth } from './auth.js';
 
+
 function getStatusBadge(status) {
     if (status === "L") return '<span class="badge bg-warning text-dark">LENDO-VSAP</span>';
     if (status === "F") return '<span class="badge bg-success">FINALIZADO</span>';
@@ -40,7 +41,6 @@ window.atualizarDiarios = async function() {
             }
         }
 };
-
 window.adicionar = async function() {
     const estadosSelecionados = document.getElementById('estados').value;
     const diariosSelecionados = Array.from(document.querySelectorAll('#diarios-container input[type="checkbox"]:checked'))
@@ -50,17 +50,46 @@ window.adicionar = async function() {
 
     const data = {
         estado: estadosSelecionados,
-        diarios: diariosSelecionados,  // Agora vai enviar os diários selecionados com checkboxes
+        diarios: diariosSelecionados,
         complemento: complementoMarcado,
         data_publicacao: dataPublicacao
     };
 
     try {
+        // **Verificação prévia se a ação já existe**
+        const checkResponse = await fetchWithAuth('/api/actions/verificar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const checkResult = await checkResponse.json();
+
+        if (checkResult.exists) {
+            // **Formatar os diários já lidos em negrito**
+            const diariosLidosHtml = checkResult.diarios_existentes
+                .map(diario => `<b>${diario}</b>`)
+                .join(', '); // Converte em HTML com negrito
+
+            // **Se a ação já existir, perguntar se deseja continuar**
+            const confirmacao = await Swal.fire({
+                icon: 'warning',
+                title: 'Ação já registrada!',
+                html: `Os seguintes diários já foram lidos para a data de publicação escolhida: ${diariosLidosHtml}.<br><br>Deseja continuar mesmo assim?`,
+                showCancelButton: true,
+                confirmButtonText: 'Sim, continuar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!confirmacao.isConfirmed) {
+                return; // Se o usuário cancelar, interrompe o processo
+            }
+        }
+
+        // **Se não existir ou se o usuário confirmar, prossegue com o envio**
         const response = await fetchWithAuth('/api/actions/registrar', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
 
@@ -81,14 +110,16 @@ window.adicionar = async function() {
         } else {
             Swal.fire({
                 icon: 'error',
-                title: result.status,
+                title: 'Erro!',
                 text: result.error || 'Erro desconhecido.',
             });
         }
     } catch (err) {
         console.error('Erro ao enviar os dados:', err);
     }
-}
+};
+
+
 
 window.finalizarAcao = async function(id) {
     try {
@@ -163,6 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
     reiniciarTemporizadorInatividade();
     iniciarStreamStatus();
     atualizarUserActions();
+    iniciarStreamEstados();
 
     eventSource.onmessage = event => {
         dados = JSON.parse(event.data);
@@ -239,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
-document.addEventListener("DOMContentLoaded", () => {
+function iniciarStreamEstados() {
     const streamTableBody = document.getElementById("state-table-body");
     const eventSource = new EventSource("/api/actions/stream_estados");
 
@@ -255,8 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         }).join("");
     };
-});
-
+}
 // Função para verificar o status do sistema usando SSE
 function iniciarStreamStatus() {
     const eventSource = new EventSource('/api/stream_status');
@@ -270,7 +301,19 @@ function iniciarStreamStatus() {
                 text: 'O sistema está bloqueado. Você não pode realizar nenhuma ação neste momento.',
                 showConfirmButton: false,
                 allowOutsideClick: false,
-                allowEscapeKey: false
+                allowEscapeKey: false,
+                didOpen: () => {
+                    if (USER_DATA.role == 'ADM') {
+                        const btn = document.createElement('button');
+                        btn.textContent = 'Reabrir Turno';
+                        btn.classList.add('btn', 'btn-primary', 'mt-3');
+                        btn.style.width = 'auto'; // Pode ser alterado para um tamanho fixo como '150px'
+                        btn.style.margin='0 auto';
+                        btn.style.display = 'block'
+                        btn.onclick = desbloquearAcesso;
+                        Swal.getPopup().appendChild(btn);
+                    }
+                }
             });
         } else {
             Swal.close();
@@ -334,6 +377,43 @@ async function salvarInatividade(totalInatividade) {
         }
     } catch (error) {
         console.error('Erro de rede ao salvar o tempo de inatividade:', error);
+    }
+}
+
+
+async function desbloquearAcesso() {
+    try {
+        const response =  await fetchWithAuth('/api/desbloquear_acesso', {
+            method: 'GET',
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: result.message,
+                showConfirmButton: false,
+                timer: 5000,
+                position: 'top-end',
+                toast: true,
+                background: '#28a745',
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: result.message,
+            });
+        }
+    } catch (err) {
+        console.error('Erro ao desbloquear o acesso:', err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: 'Erro ao enviar a requisição. Tente novamente.',
+        });
     }
 }
 

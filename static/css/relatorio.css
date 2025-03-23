@@ -115,3 +115,39 @@
     color: black;
 }
 
+
+/* Tooltip da Sidebar */
+.tooltip-sidebar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Tooltip que aparece ao lado do ícone na barra lateral */
+.tooltip-sidebar .tooltip-text {
+    visibility: hidden;
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    text-align: center;
+    padding: 5px 10px;
+    border-radius: 5px;
+    position: absolute;
+    left: 100%; /* Posiciona à direita do ícone */
+    top: 50%;
+    transform: translateY(-50%); /* Centraliza verticalmente em relação ao ícone */
+    white-space: nowrap;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    margin-left: 10px; /* Distância entre o ícone e o tooltip */
+    z-index: 9999; 
+
+}
+
+/* Quando o item da sidebar for hoverado, o tooltip aparece */
+.tooltip-sidebar:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
