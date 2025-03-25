@@ -288,6 +288,9 @@ function iniciarStreamEstados() {
         }).join("");
     };
 }
+
+let fechandoTurno = false; // Variável de controle
+
 // Função para verificar o status do sistema usando SSE
 function iniciarStreamStatus() {
     const eventSource = new EventSource('/api/stream_status');
@@ -295,6 +298,8 @@ function iniciarStreamStatus() {
         const status = event.data;
 
         if (status === 'bloqueado') {
+            fechandoTurno = true; 
+
             Swal.fire({
                 icon: 'error',
                 title: 'Turno sendo fechado',
@@ -316,6 +321,7 @@ function iniciarStreamStatus() {
                 }
             });
         } else {
+            fechandoTurno = false; 
             Swal.close();
         }
     };
@@ -332,6 +338,8 @@ let inatividadeMensagemStartTime;
 let inatividadeContador = 0;
 
 function exibirMensagemInatividade() {
+    if (fechandoTurno) return; // Não exibir a mensagem se o turno estiver sendo fechado
+
     Swal.fire({
         icon: 'warning',
         title: 'Você ainda está aí?',
