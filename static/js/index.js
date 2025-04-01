@@ -199,6 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
     eventSource.onmessage = event => {
         dados = JSON.parse(event.data);
         renderizarTabela(dados);
+        console.log(dados);
     };
 
     function renderizarTabela(data) {
@@ -212,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${action.estado}</td>
                     <td>${action.diario}</td>
                     <td>${complementoCheckbox}</td>
-                    <td>${formatarData(action.data_publicacao)}</td>
+                    <td>${action.data_publicacao}</td>
                     <td>${getStatusBadge(action.status)}</td>
                 </tr>
             `;
@@ -261,12 +262,6 @@ document.addEventListener("DOMContentLoaded", () => {
         header.textContent = ordem === "asc" ? " 🔼" : " 🔽";
     }
 
-    function formatarData(data) {
-        if (!data) return ""; // Se a data for nula, retorna vazio
-        const d = new Date(data);
-        if (isNaN(d)) return data; // Se não for uma data válida, retorna original
-        return d.toLocaleDateString("pt-BR"); // Formato DD/MM/AAAA
-    }
 });
 
 
