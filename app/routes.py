@@ -10,7 +10,7 @@ from modules.auth.JWT.filter.JWTAuthentication import JWTUtil, token_required, o
 from app.utils.date_utils import formatar_data,formartar_data_AMD
 from time import sleep 
 from config.logger_config import logger
-
+from app.utils.cacheutitl import cache
 
 main_bp = Blueprint('main',__name__)
 jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
@@ -326,6 +326,13 @@ def registrar_acao():
                 "codigo": 409,
                 "status": "Duplicidade detectada"
             }), 409
+        
+    if cache["status_sistema"] == "bloqueado":
+        return jsonify({
+            "error": "Sistema bloqueado!",
+            "codigo": 409,
+            "status": "Sistema bloqueado"
+        }), 409
 
     # Inserir registros no banco para cada diário
     for diario in diarios:

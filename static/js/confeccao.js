@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("user-table-body");
     const errorMessage = document.getElementById("error-message");
     const searchInput = document.getElementById("searchInput"); // Corrigido o ID do input
+    const UserInfo = document.getElementById("UsersInfo");
 
     showSpinner();
 
@@ -56,6 +57,8 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(data => {
         allUsers = data; // Guarda todos os usuários
         renderTable(allUsers.slice(0, 10)); // Mostra apenas 10 usuários inicialmente
+        UserInfo.textContent = `Usuários - ${allUsers.length}`; // Atualiza o total de usuários
+        errorMessage.classList.add("d-none"); // Esconde a mensagem de erro se tudo estiver ok
     })
     .catch(error => {
         console.error("Erro ao buscar os usuários:", error);

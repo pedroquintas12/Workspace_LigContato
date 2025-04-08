@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, Response
 from cachetools import LRUCache
 import time
-
+from app.utils.data import ConsultaBanco
 cache_bp = Blueprint('cache', __name__)
 
 cache = LRUCache(maxsize=1)
@@ -14,7 +14,7 @@ def status_sistema():
 
 @cache_bp.route('/api/bloquear_acesso', methods=['GET'])
 def bloquear_acesso():
-    """Bloqueia o sistema e notifica os clientes via SSE"""
+    """Bloqueia o sistema e notifica os clientes via SSE"""  
     if cache["status_sistema"] == "bloqueado":
         return jsonify({"message": "Turno já está em processo de fechamento"}), 200
     

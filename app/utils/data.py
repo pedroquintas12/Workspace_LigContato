@@ -5,6 +5,28 @@ import bcrypt
 
 class ConsultaBanco:
 
+
+    @staticmethod
+    def VerificarLeitura():
+        """
+        Verifica se alguem esta lendo diario.
+
+        returns:
+        retorna o nome de usuario e diarios que esta lendo o diario ou 'False' caso não exista
+        """
+        try:
+            db_connection = get_db_connection()
+            db_cursor = db_connection.cursor()
+            query = """SELECT username,GROUP_CONCAT(DISTINCT diario ORDER BY diario SEPARATOR ', ') AS diario FROM log_actions WHERE status = 'L' group by username limit 1"""
+            db_cursor.execute(query)
+            result = db_cursor.fetchone()
+            if result:
+                return result # Retorna o nome de usuário que está lendo o diário
+            
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao verificar leitura do banco de dados: {err}")
+            return False
+        
     @staticmethod
     def BuscarUsuario(username):
         """
