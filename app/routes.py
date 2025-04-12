@@ -138,10 +138,15 @@ def login():
             WHERE username = %s
         ''', (data_hora_login, username))
         conn.commit()
+
+        cursor.execute('''INSERT INTO history_login (ID_auth, Data_login, Created_date)
+                       VALUES (%s, %s, %s)''', (user[0], data_hora_login, data_hora_login))
+        conn.commit()
+
         conn.close()
 
         # Gera o token JWT
-        token = jwt_util.generate_token(username, origin, user[3])
+        token = jwt_util.generate_token(username, origin, user[3], user[0])
         result_holder["result"] = {
             "id": user[0],
             "username": username,
@@ -178,7 +183,15 @@ def logout():
             WHERE username = %s
         ''', (data_hora_login, username))
         conn.commit()
-    
+
+    cursor.execute('''select ID_history from history_login 
+                   where Data_logout is null and ID_auth = %s order by ID_history desc limit 1''',(jwt_util.get_id(obter_token()),))
+    id_history = cursor.fetchone()
+
+    if id_history:
+        cursor.execute('''UPDATE history_login SET Data_logout = %s WHERE ID_history = %s''',(data_hora_login, id_history[0]))
+        conn.commit()
+
     conn.close()
 
     # Obtém a mensagem de erro da URL (se existir)
@@ -192,7 +205,6 @@ def logout():
         response.delete_cookie(cookie_name, path='/')
 
     return response
-
 
 # Carregar o arquivo JSON com os diários por estado
 with open('diarios.json', 'r') as f:
@@ -351,7 +363,7 @@ def registrar_acao():
 def verficarAcao():
     data = request.json
     estado = data.get("estado")
-    diarios = data.get("diarios")  # Agora é uma lista
+    diarios = data.get("diarios")  
     complemento = data.get("complemento")
     data_publicacao = data.get("data_publicacao")
 

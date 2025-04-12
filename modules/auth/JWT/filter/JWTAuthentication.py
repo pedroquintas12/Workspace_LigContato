@@ -21,11 +21,12 @@ class JWTUtil:
         self.secret = config.SECRET_TOKEN
         self.expiration = 24 * 60 * 60  # 24 horas em segundos
 
-    def generate_token(self, username: str, origem: str, role: str) -> str:
+    def generate_token(self, username: str, origem: str, role: str, id: int) -> str:
         try:
             expiration_date = datetime.utcnow() + timedelta(seconds=self.expiration)
 
             payload = {
+                "id": id,
                 "sub": username,
                 "iss": origem,
                 "role": role,
@@ -64,6 +65,10 @@ class JWTUtil:
     def get_role(self, token: str) -> Optional[str]:
         claims = self.get_claims(token)
         return claims.get("role") if claims else None
+    
+    def get_id(self, token: str) -> Optional[str]:
+        claims = self.get_claims(token)
+        return claims.get("id") if claims else None   
 
     def get_claims(self, token: str) -> Optional[dict]:
         try:
