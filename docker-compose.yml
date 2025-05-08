@@ -1,38 +1,18 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  app:
+  workspace:
     build: .
-    container_name: python_app
-    depends_on:
-      - db
-    env_file:
-      - .env
+    container_name: Workspace
     ports:
-      - "5000:5000"
+      - "5000:8080"
+    env_file: 
+      - ./config/config.env
     volumes:
-      - .:/app
-    networks:
-      - my_network
-
-  db:
-    image: mysql:8.0
-    container_name: mysql_db
+      - ./templates:/app/templates
+      - ./static:/app/static
+    stdin_open: true
+    tty: true
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - my_network
-
-volumes:
-  mysql_data:
-
-networks:
-  my_network:
+      - TZ=America/Sao_Paulo

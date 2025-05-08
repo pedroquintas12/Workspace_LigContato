@@ -49,7 +49,6 @@ class JWTUtil:
                     return True
         except jwt.ExpiredSignatureError:
             logger.warning("Token expired.")
-            
         except jwt.InvalidTokenError:
             logger.warning("Invalid token.")
         return False
