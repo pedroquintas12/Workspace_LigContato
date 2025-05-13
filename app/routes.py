@@ -490,6 +490,8 @@ def stream_estados():
 @main_bp.route('/api/actions/stream_listar')
 @token_required
 def stream_listar():
+    last_update = None
+    today = datetime.now().strftime('%Y-%m-%d')  # Filtra os dados apenas do dia atual
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -497,51 +499,54 @@ def stream_listar():
         # Obtém a última atualização
         cursor.execute("SELECT MAX(last_update) as last_update FROM log_updates")
         result = cursor.fetchone()
-        last_update = result['last_update']
+        new_update = result['last_update']
+        
+        if new_update and new_update != last_update:
+            last_update = new_update
 
-        # Parâmetros de paginação
-        page = request.args.get('page', 1, type=int)  # Página atual (padrão: 1)
-        per_page = request.args.get('per_page', 10, type=int)  # Registros por página (padrão: 10)
-        offset = (page - 1) * per_page  # Calcula o offset
+            # Parâmetros de paginação
+            page = request.args.get('page', 1, type=int)  # Página atual (padrão: 1)
+            per_page = request.args.get('per_page', 10, type=int)  # Registros por página (padrão: 10)
+            offset = (page - 1) * per_page  # Calcula o offset
 
-        # Conta o total de registros para calcular a paginação
-        cursor.execute("SELECT COUNT(*) as total FROM log_actions")
-        total_records = cursor.fetchone()['total']
-        total_pages = (total_records + per_page - 1) // per_page  # Calcula total de páginas
+            # Conta o total de registros para calcular a paginação
+            cursor.execute("SELECT COUNT(*) as total FROM log_actions")
+            total_records = cursor.fetchone()['total']
+            total_pages = (total_records + per_page - 1) // per_page  # Calcula total de páginas
 
-        # Busca registros paginados
-        cursor.execute("""SELECT 
-                            GROUP_CONCAT(DISTINCT ID_log ORDER BY ID_log SEPARATOR ', ') AS ID_log,
-                            username, 
-                            estado, 
-                            GROUP_CONCAT(DISTINCT diario ORDER BY diario SEPARATOR ', ') AS diario,
-                            complemento, 
-                            status, 
-                            inicio, 
-                            fim, 
-                            tempo_decorrido  
-                        FROM log_actions
-                        GROUP BY username, estado, complemento, status, inicio, fim, tempo_decorrido
-                        ORDER BY status DESC, inicio DESC
-                        LIMIT %s OFFSET %s;
-                       """, (per_page, offset))
-        acoes = cursor.fetchall()
+            # Busca registros paginados
+            cursor.execute("""SELECT 
+                                GROUP_CONCAT(DISTINCT ID_log ORDER BY ID_log SEPARATOR ', ') AS ID_log,
+                                username, 
+                                estado, 
+                                GROUP_CONCAT(DISTINCT diario ORDER BY diario SEPARATOR ', ') AS diario,
+                                complemento, 
+                                status, 
+                                inicio, 
+                                fim, 
+                                tempo_decorrido  
+                            FROM log_actions
+                            GROUP BY username, estado, complemento, status, inicio, fim, tempo_decorrido
+                            ORDER BY status DESC, inicio DESC
+                            LIMIT %s OFFSET %s;
+                        """, (per_page, offset))
+            acoes = cursor.fetchall()
 
-        # Formata os dados antes de enviar
-        for registro in acoes:
-            registro['inicio'] = formatar_data(registro['inicio'])
-            registro['fim'] = formatar_data(registro['fim'])
+            # Formata os dados antes de enviar
+            for registro in acoes:
+                registro['inicio'] = formatar_data(registro['inicio'])
+                registro['fim'] = formatar_data(registro['fim'])
 
-        conn.close()
+            conn.close()
 
-        # Retorna os dados paginados
-        return jsonify({
-            "current_page": page,
-            "per_page": per_page,
-            "total_pages": total_pages,
-            "total_records": total_records,
-            "data": acoes
-        })
+            # Retorna os dados paginados
+            return jsonify({
+                "current_page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
+                "total_records": total_records,
+                "data": acoes
+            })
 
     except Exception as e:
         print(f"Erro ao buscar ações: {e}")
