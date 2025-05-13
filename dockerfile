@@ -1,29 +1,15 @@
-# Usa uma imagem oficial do Python
-FROM python:3.10
+FROM python:3.13-slim
 
-# Instala dependências do sistema necessárias para compilar pacotes Python nativos
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libssl-dev \
-    libffi-dev \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*  
-
-# Define o diretório de trabalho
 WORKDIR /app
 
-# Copia os arquivos necessários
 COPY requirements.txt .
 
-RUN pip install --upgrade pip
+RUN python -m pip install --upgrade pip
 
-RUN pip install --no-cache-dir cryptography
-
-# Instala as dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia todo o código para o contêiner
 COPY . .
 
-# Define o comando padrão ao iniciar o contêiner
+EXPOSE 5000
+
 CMD ["python", "main.py"]

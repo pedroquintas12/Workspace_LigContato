@@ -147,6 +147,7 @@ def login():
 
         # Gera o token JWT
         token = jwt_util.generate_token(username, origin, user[3], user[0])
+        
         result_holder["result"] = {
             "id": user[0],
             "username": username,
