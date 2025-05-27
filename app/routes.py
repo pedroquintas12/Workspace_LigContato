@@ -941,3 +941,40 @@ def search():
     finally:
         cursor.close()
         conn.close()
+
+
+
+@main_bp.route('/api/updateDiary', methods=['POST'])
+@token_required
+def update_diary():
+    data = request.get_json()
+    estado = data.get('estado')
+    diario = data.get('diario')  # Pode ser string ou dict, conforme estrutura do JSON
+
+    if not estado or not diario:
+        return jsonify({"error": "Campos 'estado' e 'diario' são obrigatórios."}), 400
+
+    try:
+        # Carrega o arquivo JSON atual
+        with open('diarios.json', 'r', encoding='utf-8') as f:
+            diarios_data = json.load(f)
+
+        # Se o estado não existir, cria uma lista vazia
+        if estado not in diarios_data:
+            diarios_data[estado] = []
+
+        # Só adiciona se ainda não existir
+        if diario not in diarios_data[estado]:
+            diarios_data[estado].append(diario)
+        else:
+            return jsonify({"error": "Diário já existe para este estado."}), 409
+
+        # Salva o arquivo JSON atualizado
+        with open('diarios.json', 'w', encoding='utf-8') as f:
+            json.dump(diarios_data, f, ensure_ascii=False, indent=4)
+
+        return jsonify({"message": "Diário adicionado com sucesso!", "estado": estado, "diario": diario}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+

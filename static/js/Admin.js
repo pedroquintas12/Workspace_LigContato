@@ -18,7 +18,9 @@ function parseDate(dateString) {
 }
 
 function calculateElapsedTime(startTime) {
+    console.log("tempo inicial:" + startTime)
     const start = parseDate(startTime);
+    console.log("tempo inicial convertido:" + start)
     const now = new Date();
     const elapsedMs = now - start;
 
