@@ -89,7 +89,9 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
             const elapsedTime = action.fim ? "-" : calculateElapsedTime(action.inicio);
             const status = action.fim ? action.fim : "Em andamento";
-
+            console.log("Tempo decorrido: " + action.elapsedTime)
+            console.log("tempo de incio " + action.inicio)
+            console.log("tempo de fim " + action.fim)
             return `
                 <tr>
                     <td>${action.ID_log}</td>
