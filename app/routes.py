@@ -207,13 +207,18 @@ def logout():
 
     return response
 
-# Carregar o arquivo JSON com os diários por estado
-with open('diarios.json', 'r') as f:
-    diarios_data = json.load(f)
+
 
 @main_bp.route('/api/diarios', methods=['GET'])
 @token_required
 def get_diarios():
+    try:
+        with open('diarios.json', 'r') as f:
+            diarios_data = json.load(f)
+    except FileNotFoundError:
+        return jsonify({"error": "Arquivo diarios.json não encontrado"}), 500
+    except json.JSONDecodeError:
+        return jsonify({"error": "Erro ao decodificar JSON"}), 500
     # Obtém os estados passados como uma string separada por vírgula
     estados_param = request.args.get('publicationsState')
 
@@ -950,30 +955,47 @@ def update_diary():
     data = request.get_json()
     estado = data.get('estado')
     diario = data.get('diario')  # Pode ser string ou dict, conforme estrutura do JSON
+    funcao = data.get('funcao')  # Função para adicionar ou remover
 
-    if not estado or not diario:
-        return jsonify({"error": "Campos 'estado' e 'diario' são obrigatórios."}), 400
-
+    if not estado or not diario or not funcao:
+        return jsonify({"error": "Campos 'estado', 'diario' e 'funcao' são obrigatórios."}), 400
+    
     try:
         # Carrega o arquivo JSON atual
         with open('diarios.json', 'r', encoding='utf-8') as f:
             diarios_data = json.load(f)
-
+        
         # Se o estado não existir, cria uma lista vazia
         if estado not in diarios_data:
             diarios_data[estado] = []
+        if funcao == 'adicionar':
+            # Só adiciona se ainda não existir
+            if diario not in diarios_data[estado]:
+                diarios_data[estado].append(diario)
+            else:
+                return jsonify({"error": "Diário já existe para este estado."}), 409
 
-        # Só adiciona se ainda não existir
-        if diario not in diarios_data[estado]:
-            diarios_data[estado].append(diario)
-        else:
-            return jsonify({"error": "Diário já existe para este estado."}), 409
+            # Salva o arquivo JSON atualizado
+            with open('diarios.json', 'w', encoding='utf-8') as f:
+                json.dump(diarios_data, f, ensure_ascii=False, indent=4)
 
-        # Salva o arquivo JSON atualizado
-        with open('diarios.json', 'w', encoding='utf-8') as f:
-            json.dump(diarios_data, f, ensure_ascii=False, indent=4)
+            return jsonify({"message": "Diário adicionado com sucesso!", "estado": estado, "diario": diario}), 200
+        elif funcao == 'remover':
+            # Verifica se o diário existe para o estado
+            if diario in diarios_data.get(estado, []):
+                diarios_data[estado].remove(diario)
+                
+                # Se a lista ficar vazia, remove o estado
+                if not diarios_data[estado]:
+                    del diarios_data[estado]
 
-        return jsonify({"message": "Diário adicionado com sucesso!", "estado": estado, "diario": diario}), 200
+                # Salva o arquivo JSON atualizado
+                with open('diarios.json', 'w', encoding='utf-8') as f:
+                    json.dump(diarios_data, f, ensure_ascii=False, indent=4)
+
+                return jsonify({"message": "Diário removido com sucesso!", "estado": estado, "diario": diario}), 200
+            else:
+                return jsonify({"error": "Diário não encontrado para este estado."}), 404
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

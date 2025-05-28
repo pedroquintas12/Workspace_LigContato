@@ -8,9 +8,8 @@ services:
       - "8000:8000"  # porta externa 8000 → interna 5000 (ajuste se seu app rodar em 8080)
     env_file: 
       - ./config/config.env
-    # volumes:
-    #   - ./templates:/app/templates
-    #   - ./static:/app/static
+    volumes:
+      - ./dados:/diarios.json
     stdin_open: true
     tty: true
     restart: always
