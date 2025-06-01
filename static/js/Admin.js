@@ -14,13 +14,11 @@ function getStatusBadge(status) {
 
 function parseDate(dateString) {
     const [day, month, year, hour, minute, second] = dateString.split(/[/\s:]/);
-    return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
+    return new Date(`${year}-${month}-${day} ${hour}:${minute}:${second}`);
 }
 
 function calculateElapsedTime(startTime) {
-    console.log("tempo inicial:" + startTime)
     const start = parseDate(startTime);
-    console.log("tempo inicial convertido:" + start)
     const now = new Date();
     const elapsedMs = now - start;
 
