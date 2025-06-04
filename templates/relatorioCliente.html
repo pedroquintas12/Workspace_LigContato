@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório de Abrangência</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="icon" href="https://resources-lig.s3.amazonaws.com/images/logo-thumbnail-whatsapp.png">
+  <link rel="stylesheet" href="/static/css/relatorio.css">
+</head>
+
+<body>
+  <!-- Cabeçalho -->
+  <div class="top-header">     
+      <button id="toggle-btn" class="toggle-btn">
+          <i class="material-icons">menu</i>
+      </button>
+      <span class="user-info">
+          {% if username %}
+              | Bem-vindo, <b>{{ username }}</b>
+          {% else %}
+              | Bem-vindo, visitante
+          {% endif %}
+      </span>
+  </div>
+
+  <!-- Barra lateral -->
+  <div id="sidebar" class="sidebar">
+      <div class="menu-item">
+          <a href="/dashboard">
+              <i class="material-icons">dashboard</i>
+              <span>Dashboard</span>
+          </a>
+      </div>
+      {% if role == "ADM" %}
+      <div class="menu-item">
+          <a href="/" class="tooltip-sidebar">
+              <i class="material-icons">library_books</i>
+              <span>Jornais</span>
+              <span class="tooltip-text">Acesse os Jornais</span>
+          </a>
+      </div>
+      <div class="menu-item">
+          <a href="/admin" class="tooltip-sidebar">
+              <i class="material-icons">dashboard</i>
+              <span>Dashboard</span>
+              <span class="tooltip-text">Acesse o Dashboard</span>
+          </a>
+      </div>
+      <div class="menu-item">
+          <a href="/relatorio" class="tooltip-sidebar">
+              <i class="material-icons">assessment</i>
+              <span class="menu-text">Relatório</span>
+              <span class="tooltip-text">Acesse o Relatório</span>
+          </a>
+      </div>
+      <div class="menu-item">
+          <a href="/users" class="tooltip-sidebar">
+              <i class="material-icons">group</i>
+              <span>Funcionários</span>
+              <span class="tooltip-text">Acesse a tabela de Funcionários</span>
+          </a>
+      </div>
+      <div class="menu-item">
+          <a href="/confeccao_pecas" class="tooltip-sidebar">
+              <i class="material-icons">add_home_work</i>
+              <span>Confecção de peças</span>
+              <span class="tooltip-text">Acesse a Confecção de Peças</span>
+          </a>
+      </div>
+      <div class="menu-item">
+          <a href="/relatorioCliente" class="tooltip-sidebar">
+              <i class="material-icons">description</i>
+              <span>Relatório de abrangência</span>
+              <span class="tooltip-text">Acesse o Relatório de abrangência</span>
+          </a>
+      </div>
+      {% endif %}
+      <div class="menu-item">
+          <a href="/logout" class="tooltip-sidebar">
+              <i class="material-icons">exit_to_app</i>
+              <span>Sair</span>
+              <span class="tooltip-text">Fazer Logout</span>
+          </a>
+      </div>
+  </div>
+
+    <!-- Conteúdo principal -->
+    <div class="container mt-5">
+        <h1 class="text-center">Relatório de Abrangência</h1>
+
+        <form id="RelatorioForm" class="mt-4">
+        <label for="EscritorioSelect">Selecione um escritório:</label>
+            <input type="number" id="EscritorioSelect" class="form-control" placeholder="Digite o código do escritório" required>
+
+
+
+        <button type="button" id="GerarRelatorio" class="btn btn-success mt-4">
+            <i class="material-icons">description</i> Gerar Relatório
+        </button>
+        </form>
+
+        <div id="resultadoRelatorio" class="mt-4"></div>
+    </div>
+    <!-- Overlay escuro com o spinner centralizado -->
+    <div id="loading-overlay">
+        <div id="loading-spinner" class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script type="module" src="/static/js/relatorio_cliente.js"></script>
+</body>
+</html>

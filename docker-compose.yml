@@ -10,6 +10,8 @@ services:
       - ./config/config.env
     volumes:
       - ./dados:/diarios.json
+      - ./dados:/estados.json
+
     stdin_open: true
     tty: true
     restart: always
