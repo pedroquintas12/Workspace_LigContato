@@ -91,6 +91,23 @@ class ConsultaBanco:
             finally:
                 db_cursor.close()  # Fecha o cursor
                 db_connection.close()  # Fecha a conexão
+    def PuxarCompanies():
+        """
+        Puxa as companias do banco de dados.
+
+        returns: todos os dados das companias
+        """
+        try:
+            db_connection = get_db_connection()
+            db_cursor = db_connection.cursor()
+            query = """SELECT * FROM companies"""
+            db_cursor.execute(query)
+            result = db_cursor.fetchall()
+            return result  # Retorna todos os dados das companias
+            
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao puxar companias: {err}")
+            return {"status": "error", "message": str(err)}, 500
 
 
 class InserirBanco:

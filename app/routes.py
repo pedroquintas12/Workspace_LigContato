@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from flask import Blueprint, Response, json, jsonify, make_response, redirect, render_template, request
+from flask import Blueprint, Response, json, jsonify, make_response, redirect, render_template, request,send_file
 import mysql.connector
 from app.utils.data import ConsultaBanco, InserirBanco
 from flask import jsonify, request
@@ -11,6 +11,8 @@ from app.utils.date_utils import formatar_data,formartar_data_AMD
 from time import sleep 
 from config.logger_config import logger
 from app.utils.cacheutitl import cache
+from app.utils.apiPesquisaNomes import get_dados_escritorio
+from app.utils.criarWord import gerar_relatorio_word
 
 main_bp = Blueprint('main',__name__)
 jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
@@ -1000,3 +1002,24 @@ def update_diary():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@main_bp.route('/api/gerarRelatorioNomes', methods=['POST'])
+@token_required
+def gerarRelatorioNomes():
+    data = request.get_json()
+    codigo = data.get('escritorio')
+    if not codigo:
+        return jsonify({"error": "Código do escritório é obrigatório."}), 400
+    try:
+        dados = get_dados_escritorio(codigo)
+        arquivo_word = gerar_relatorio_word(dados)
+
+        # Envia o arquivo Word gerado como resposta
+        return send_file(
+            arquivo_word,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            as_attachment=True,
+            download_name=f'relatorio_escritorio_{codigo}.docx'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
