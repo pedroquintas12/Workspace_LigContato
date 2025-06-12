@@ -40,7 +40,7 @@ def gerar_relatorio_word(dados):
     for item in dados:
         p_cliente = doc.add_paragraph()
         p_cliente.paragraph_format.space_after = Pt(2)
-        run_cliente = p_cliente.add_run(f"Cliente: {item['nome_cliente']}")
+        run_cliente = p_cliente.add_run(f"{item['nome_cliente']}")
         run_cliente.bold = True
         run_cliente.font.size = Pt(12)
 
