@@ -1035,24 +1035,31 @@ def update_diary():
 @token_required
 def gerarRelatorioNomes():
     data = request.get_json()
-    codigo = data.get('escritorio')
-    if not codigo:
+    codigos = data.get('escritorio')
+    if not codigos:
         return jsonify({"error": "Código do escritório é obrigatório."}), 400
     try:
-        dados = get_dados_escritorio(codigo)
-        if not dados:
-            logger.error(f"Nenhum dado encontrado para gerar o relatório do escritório com código {codigo}.")  
-            return jsonify({"error": "Nenhum dado encontrado para o escritório com o código fornecido."}), 404
-        
-        arquivo_word = gerar_relatorio_word(dados)
+        # Aceita múltiplos códigos separados por ";"
+        lista_codigos = [c.strip() for c in codigos.split(';') if c.strip()]
+        relatorios = []
+        for codigo in lista_codigos:
+            dados = get_dados_escritorio(codigo)
+            if not dados:
+                logger.warning(f"Nenhum dado encontrado para o escritório {codigo}.")
+                continue
+            relatorios.append({"codigo": codigo, "dados": dados})
 
-        # Envia o arquivo Word gerado como resposta
+        if not relatorios:
+            return jsonify({"error": "Nenhum dado encontrado para os códigos fornecidos."}), 404
+
+        # Gera um único arquivo Word com todos os relatórios
+        arquivo_word = gerar_relatorio_word(relatorios)
+
         return send_file(
             arquivo_word,
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             as_attachment=True,
-            download_name=f'relatorio_escritorio_{codigo}.docx'
+            download_name=f'relatorio_escritorios.docx'
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
