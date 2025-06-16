@@ -27,7 +27,7 @@ function getCookie(name) {
     }
     return null; // Retorna null se o cookie não for encontrado
 }
-const toke = getCookie("api.token")
+const toke = getCookie("api.token.workspace"); // Obtém o token da API do cookie
 
 
 let debounceTimeout; // Para controlar o debounce
