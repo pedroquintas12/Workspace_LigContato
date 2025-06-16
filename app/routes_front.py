@@ -53,3 +53,12 @@ def relatorio():
         return jsonify({"error": "Acesso negado! Você não tem permissão para acessar esta página."}), 403
     
     return render_template('relatorio.html', username= jwt_util.get_username(obter_token()),role= jwt_util.get_role(obter_token()))
+
+@front_bp.route('/relatorioCliente')
+@token_required 
+def relatorio_nomes():
+    # Verifica se a role do usuário é 'admin'
+    if jwt_util.get_role(obter_token()) != 'ADM':
+        return jsonify({"error": "Acesso negado! Você não tem permissão para acessar esta página."}), 403
+    
+    return render_template('relatorioCliente.html', username= jwt_util.get_username(obter_token()),role= jwt_util.get_role(obter_token()))

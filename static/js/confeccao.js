@@ -35,7 +35,7 @@ let debounceTimeout; // Para controlar o debounce
 document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("user-table-body");
     const errorMessage = document.getElementById("error-message");
-    const searchInput = document.getElementById("searchInput"); // Corrigido o ID do input
+    const searchInput = document.getElementById("searchInput"); 
     const UserInfo = document.getElementById("UsersInfo");
 
     showSpinner();

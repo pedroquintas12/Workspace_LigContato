@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from flask import Blueprint, Response, json, jsonify, make_response, redirect, render_template, request
+from flask import Blueprint, Response, json, jsonify, make_response, redirect, render_template, request,send_file
 import mysql.connector
 from app.utils.data import ConsultaBanco, InserirBanco
 from flask import jsonify, request
@@ -11,6 +11,8 @@ from app.utils.date_utils import formatar_data,formartar_data_AMD
 from time import sleep 
 from config.logger_config import logger
 from app.utils.cacheutitl import cache
+from app.utils.apiPesquisaNomes import get_dados_escritorio
+from app.utils.criarWord import gerar_relatorio_word
 
 main_bp = Blueprint('main',__name__)
 jwt_util = JWTUtil()  # Cria uma instância da classe JWTUtil
@@ -28,9 +30,11 @@ def register():
 
     # Validação básica
     if not username or not password or not role:
+        logger.error("Campos obrigatórios não informados.")
         return jsonify({"message": "Todos os campos são obrigatórios."}), 400
 
     if ConsultaBanco.BuscarUsuario(username):
+        logger.error(f"Usuário {username} já registrado.")
         return jsonify({"message": "Usuário já registrado."}), 400
 
     # Criptografa a senha antes de salvar
@@ -67,6 +71,7 @@ def register():
                     "code": codigo_api,
                 }
         except Exception as e:
+            logger.error(f"Erro ao inserir usuário: {e}")
             result_holder["result"] = {
                 "error": str(e),
                 "codigo": 500,
@@ -95,6 +100,7 @@ def login():
         # Busca o usuário no banco de dados
         user = ConsultaBanco.BuscarUsuario(username)
         if not user:
+            logger.error(f"Usuário {username} não encontrado.")
             result_holder["result"] = {
                 "error": "Usuário não encontrado.",
                 "codigo": 404,
@@ -104,6 +110,7 @@ def login():
 
         # Valida a senha criptografada
         if not check_password_hash(user[2], password):
+            logger.error(f"Senha inválida para o usuário {username}.")
             result_holder["result"] = {
                 "error": "Senha inválida.",
                 "codigo": 401,
@@ -112,6 +119,7 @@ def login():
             return jsonify(result_holder["result"]), 401
         
         if user[5] != "L":
+            logger.error(f"Usuário {username} está bloqueado.")
             result_holder["result"] = {
                 "error": "Usuário bloqueado.",
                 "codigo": 404,
@@ -120,6 +128,7 @@ def login():
             return jsonify(result_holder["result"]), 404
         
         if user[6]!= "N":
+
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute('''UPDATE auth SET last_logout= %s, status_logado = 'N'
@@ -161,6 +170,7 @@ def login():
         return resp
 
     except Exception as e:
+        logger.error(f"Erro ao realizar login: {e}")
         result_holder["result"] = {
             "error": str(e),
             "codigo": 500,
@@ -216,13 +226,16 @@ def get_diarios():
         with open('diarios.json', 'r') as f:
             diarios_data = json.load(f)
     except FileNotFoundError:
+        logger.error("Arquivo diarios.json não encontrado.")
         return jsonify({"error": "Arquivo diarios.json não encontrado"}), 500
     except json.JSONDecodeError:
+        logger.error("Erro ao decodificar o arquivo JSON diarios.json.")
         return jsonify({"error": "Erro ao decodificar JSON"}), 500
     # Obtém os estados passados como uma string separada por vírgula
     estados_param = request.args.get('publicationsState')
 
     if not estados_param:
+        logger.error("Nenhum estado fornecido na requisição.")
         return jsonify({"error": "Nenhum estado fornecido"}), 400
 
     # Divide a string de estados em uma lista
@@ -253,6 +266,7 @@ def registrar_acao():
     status = "L"
 
     if not estado or not diarios or not data_publicacao:
+        logger.error("Estado, diários ou data de publicação não informados.")
         return jsonify({
             "error": "Obrigatório informar estado, diários e data de publicação.",
             "codigo": 404,
@@ -261,6 +275,7 @@ def registrar_acao():
 
     # Garantir que 'diarios' seja uma lista válida
     if not isinstance(diarios, list):
+        logger.error("O campo 'diario' deve ser uma lista.")
         return jsonify({
             "error": "O campo 'diario' deve ser uma lista.",
             "codigo": 400,
@@ -277,6 +292,7 @@ def registrar_acao():
 
     if not user:
         conn.close()
+        logger.error(f"Usuário {usuario} não encontrado ao tentar registrar ação.")
         return jsonify({
             "error": "Usuário não encontrado.",
             "codigo": 401,
@@ -293,6 +309,7 @@ def registrar_acao():
         #verifica quantaos estados o usuario esta lendo
         if active_count >= 3:
             conn.close()
+            logger.error(f"Usuário {usuario} tentou ler mais de 3 estados.")
             return jsonify({
                 "error": "Você só pode ler 3 estados por vez!",
                 "codigo": 409,
@@ -309,12 +326,13 @@ def registrar_acao():
         conn.close()
 
         if usuario == existing_state[0]:
+            logger.error(f"Usuário {usuario} já está lendo o estado {estado}.")
             return jsonify({
                 "error": "Você já está lendo esse estado.",
                 "codigo": 409,
                 "status": "Duplicidade detectada"
             }), 409
-
+        logger.error(f"Usuário {usuario} tentou ler um estado já em uso por {existing_state[0]}.")
         return jsonify({
             "error": f"{existing_state[0]} está lendo esse estado.",
             "codigo": 409,
@@ -374,6 +392,7 @@ def verficarAcao():
     data_publicacao = data.get("data_publicacao")
 
     if not diarios or not isinstance(diarios, list):
+        logger.error("A lista de diários é inválida ou está vazia.")
         return jsonify({"error": "A lista de diários é inválida ou está vazia."}), 400
 
     try:
@@ -555,7 +574,7 @@ def stream_listar():
             })
 
     except Exception as e:
-        print(f"Erro ao buscar ações: {e}")
+        logger.error(f"Erro ao buscar ações: {e}")
         return jsonify({"error": "Erro ao buscar dados"}), 500
 
 @main_bp.route('/api/actions/finalizar/<int:id>', methods=['PUT'])
@@ -633,6 +652,7 @@ def get_user_actions():
 def api_users():
     # Verifica se o usuário tem permissão para acessar esta rota
     if jwt_util.get_role(obter_token()) != "ADM":
+        logger.error("Acesso negado ao endpoint de usuários")
         return jsonify({"error": "Acesso negado! Apenas administradores podem acessar esta rota."}), 403
 
     conn = get_db_connection()
@@ -707,6 +727,7 @@ def api_users():
 
     except Exception as e:
         conn.close()
+        logger.error(f"Erro ao obter usuários: {e}")
         return jsonify({"error": str(e)}), 500
     
 @main_bp.route('/api/salvar_inatividade', methods=['POST'])
@@ -725,6 +746,7 @@ def salvar_inatividade():
         user_id = cursor.fetchone()
 
         if not user_id:
+            logger.error(f"Usuário {user} não encontrado ao tentar salvar inatividade.")
             return jsonify({"error": "Usuário não encontrado"}), 404
 
         # Buscar todos os ID_log associados ao usuário com status "L"
@@ -746,6 +768,7 @@ def salvar_inatividade():
         return jsonify({"message": f"Tempo de inatividade salvo para {len(logs)} registros"}), 200
 
     except Exception as e:
+        logger.error(f"Erro ao salvar inatividade: {e}")
         return jsonify({"erro": str(e)}), 500
 
     finally:
@@ -758,6 +781,7 @@ def get_user_history(id):
 
     # Verifica se o usuário tem permissão para acessar o histórico
     if jwt_util.get_role(obter_token()) != "ADM":
+        logger.error("Acesso negado ao endpoint de histórico de usuário")
         return jsonify({"error": "Acesso negado!"}), 403
 
     conn = get_db_connection()
@@ -809,6 +833,7 @@ def get_user_history(id):
 
     except Exception as e:
         conn.close()
+        logger.error(f"Erro ao obter histórico do usuário {id}: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -817,6 +842,7 @@ def get_user_history(id):
 def search():
     # Verifica se o usuário tem permissão para acessar o histórico
     if jwt_util.get_role(obter_token()) != "ADM":
+        logger.error("Acesso negado ao endpoint de pesquisa")
         return jsonify({"error": "Acesso negado!"}), 403
 
     funcionario = request.args.get('FUNC')  # Nome do usuário buscado
@@ -941,6 +967,7 @@ def search():
         return jsonify(response_data)
 
     except Exception as e:
+        logger.error(f"Erro ao buscar histórico do usuário: {e}")
         return jsonify({"error": str(e)}), 500
 
     finally:
@@ -958,6 +985,7 @@ def update_diary():
     funcao = data.get('funcao')  # Função para adicionar ou remover
 
     if not estado or not diario or not funcao:
+        logger.error("Campos 'estado', 'diario' e 'funcao' são obrigatórios.")
         return jsonify({"error": "Campos 'estado', 'diario' e 'funcao' são obrigatórios."}), 400
     
     try:
@@ -973,12 +1001,14 @@ def update_diary():
             if diario not in diarios_data[estado]:
                 diarios_data[estado].append(diario)
             else:
+                logger.error(f"Diário {diario} já existe para o estado {estado}.")
                 return jsonify({"error": "Diário já existe para este estado."}), 409
 
             # Salva o arquivo JSON atualizado
             with open('diarios.json', 'w', encoding='utf-8') as f:
                 json.dump(diarios_data, f, ensure_ascii=False, indent=4)
 
+            logger.info(f"Diário {diario} adicionado com sucesso ao estado {estado}.")
             return jsonify({"message": "Diário adicionado com sucesso!", "estado": estado, "diario": diario}), 200
         elif funcao == 'remover':
             # Verifica se o diário existe para o estado
@@ -992,11 +1022,37 @@ def update_diary():
                 # Salva o arquivo JSON atualizado
                 with open('diarios.json', 'w', encoding='utf-8') as f:
                     json.dump(diarios_data, f, ensure_ascii=False, indent=4)
-
+                logger.info(f"Diário {diario} removido com sucesso do estado {estado}.")
                 return jsonify({"message": "Diário removido com sucesso!", "estado": estado, "diario": diario}), 200
             else:
+                logger.error(f"Diário {diario} não encontrado para o estado {estado}.")
                 return jsonify({"error": "Diário não encontrado para este estado."}), 404
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@main_bp.route('/api/gerarRelatorioNomes', methods=['POST'])
+@token_required
+def gerarRelatorioNomes():
+    data = request.get_json()
+    codigo = data.get('escritorio')
+    if not codigo:
+        return jsonify({"error": "Código do escritório é obrigatório."}), 400
+    try:
+        dados = get_dados_escritorio(codigo)
+        if not dados:
+            logger.error(f"Nenhum dado encontrado para gerar o relatório do escritório com código {codigo}.")  
+            return jsonify({"error": "Nenhum dado encontrado para o escritório com o código fornecido."}), 404
+        
+        arquivo_word = gerar_relatorio_word(dados)
+
+        # Envia o arquivo Word gerado como resposta
+        return send_file(
+            arquivo_word,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            as_attachment=True,
+            download_name=f'relatorio_escritorio_{codigo}.docx'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
