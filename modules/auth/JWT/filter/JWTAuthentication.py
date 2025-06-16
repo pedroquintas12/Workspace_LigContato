@@ -122,8 +122,8 @@ def obter_token():
     token = None
 
     # Verifica se o token está nos cookies
-    if 'api.token' in request.cookies:
-        token = request.cookies.get('api.token')
+    if 'api.token.workspace' in request.cookies:
+        token = request.cookies.get('api.token.workspace')
 
     # Verifica se o token está no cabeçalho Authorization
     if 'Authorization' in request.headers:
