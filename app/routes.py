@@ -596,9 +596,9 @@ def finalizar_acao(id):
         conn.close()
         return jsonify({"error": "Ação não encontrada!"}), 404
 
+
     if action[1] != username:
-        conn.close()
-        return jsonify({"error": "Você não tem permissão para finalizar esta ação!"}), 403
+       logger.warning(f"Usuário: {username} finalizando ação de outro usuário: {action[1]}")
 
     # Calcula o tempo decorrido e atualiza a ação para finalizada
     inicio = action[0]

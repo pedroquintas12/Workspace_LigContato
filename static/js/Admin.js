@@ -86,10 +86,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <input type="checkbox" class="form-check-input"${action.complemento ? "checked" : ""} disabled>
         `;
             const elapsedTime = action.fim ? "-" : calculateElapsedTime(action.inicio);
+            const finalizarAcaoBtn = action.fim ? "" : `<button class="btn btn-danger btn-sm" onclick="finalizarAcao(${action.ID_log})">Finalizar</button>`;
             const status = action.fim ? action.fim : "Em andamento";
-            console.log("Tempo decorrido: " + action.elapsedTime)
-            console.log("tempo de incio " + action.inicio)
-            console.log("tempo de fim " + action.fim)
             return `
                 <tr>
                     <td>${action.ID_log}</td>
@@ -100,6 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${getStatusBadge(action.status)}</td>
                     <td>${action.inicio}</td>
                     <td>${elapsedTime}</td>
+                    <td>${finalizarAcaoBtn}</td>
                 </tr>
             `;
         }).join("");
@@ -243,4 +242,35 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     }
+window.finalizarAcao = async function(id) {
+    try {
+        const response = await fetchWithAuth(`/api/actions/finalizar/${id}`, { method: 'PUT' });
 
+        if (response.ok) {
+            const result = await response.json();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: result.message,
+                showConfirmButton: false,
+                timer: 5000,
+                position: 'top-end',
+                toast: true,
+                background: '#28a745',
+            });
+
+            atualizarUserActions();
+        } else {
+            const error = await response.json();
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro ao Finalizar',
+                text: error.message || 'Erro desconhecido.',
+            });
+        }
+    } catch (err) {
+        console.error('Erro ao finalizar a ação:', err);
+    }
+}
