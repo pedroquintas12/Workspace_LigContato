@@ -401,21 +401,32 @@ def verficarAcao():
 
         # Criar uma query para verificar múltiplos diários
         query = """
-            SELECT diario FROM log_actions
-            WHERE estado = %s AND complemento = %s AND data_publicacao = %s
+            SELECT
+              GROUP_CONCAT(DISTINCT diario ORDER BY diario SEPARATOR ', ') AS diario,
+              username,
+              inicio 
+              FROM log_actions
+            WHERE
+            estado = %s 
+            AND complemento = %s
+            AND data_publicacao = %s
             AND diario IN ({})
-        """.format(', '.join(['%s'] * len(diarios)))  # Gera placeholders (%s, %s, %s, ...)
+            GROUP BY username, inicio;
+
+        """.format(', '.join(['%s'] * len(diarios))) 
 
         params = [estado, complemento, data_publicacao] + diarios
         cursor.execute(query, params)
         registros = cursor.fetchall()
-
+        
         # Extrair os diários que já existem
-        diarios_existentes = [registro["diario"] for registro in registros]
 
         return jsonify({
-            "exists": bool(diarios_existentes),  # Retorna True se pelo menos um existir
-            "diarios_existentes": diarios_existentes  # Lista os diários encontrados
+            "exists": bool(registros[0]["diario"]),  # Retorna True se pelo menos um existir
+            "diarios_existentes": registros[0]["diario"],  # Lista os diários encontrados
+            "user": registros[0]["username"],
+            "inicio": [formatar_data(registros[0]["inicio"])]
+
         })
 
     except mysql.connector.Error as err:
